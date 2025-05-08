@@ -1,0 +1,91 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+  
+  body {
+    @apply font-sans text-gray-800 bg-[#F4F1EB];
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif font-bold;
+  }
+
+  h1 {
+    @apply text-4xl md:text-5xl;
+  }
+
+  h2 {
+    @apply text-3xl md:text-4xl;
+  }
+
+  h3 {
+    @apply text-2xl md:text-3xl;
+  }
+
+  h4 {
+    @apply text-xl md:text-2xl;
+  }
+
+  h5 {
+    @apply text-lg md:text-xl;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center px-5 py-2.5 border border-transparent rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors duration-300;
+  }
+
+  .btn-primary {
+    @apply btn bg-[#D4AF37] text-white hover:bg-opacity-90 focus:ring-[#D4AF37] shadow-luxe hover:shadow-luxe-hover;
+  }
+
+  .btn-secondary {
+    @apply btn bg-[#1C2541] text-white hover:bg-opacity-90 focus:ring-[#1C2541] shadow-luxe hover:shadow-luxe-hover;
+  }
+
+  .btn-accent {
+    @apply btn bg-[#2E8B57] text-white hover:bg-opacity-90 focus:ring-[#2E8B57] shadow-luxe hover:shadow-luxe-hover;
+  }
+
+  .btn-outline {
+    @apply btn border-[#F4F1EB] bg-[#F8F6F0] text-[#A0A0A0] hover:bg-white hover:text-[#2E8B57] focus:ring-[#D4AF37] shadow-sm hover:shadow-luxe;
+  }
+
+  .btn-danger {
+    @apply btn bg-danger-600 text-white hover:bg-danger-700 focus:ring-danger-500;
+  }
+
+  .btn-success {
+    @apply btn bg-success-600 text-white hover:bg-success-700 focus:ring-success-500;
+  }
+
+  .card {
+    @apply bg-[#F8F6F0] rounded-xl shadow-luxe border border-[#F4F1EB] overflow-hidden;
+  }
+
+  .form-input {
+    @apply block w-full rounded-md border-[#F4F1EB] shadow-sm focus:border-[#D4AF37] focus:ring-[#D4AF37] bg-white transition-colors duration-200;
+  }
+
+  .form-label {
+    @apply block text-sm font-medium text-gray-700 mb-1;
+  }
+
+  .form-error {
+    @apply mt-1 text-sm text-[#D4AF37];
+  }
+
+  .section {
+    @apply py-16 md:py-24;
+  }
+
+  .container-custom {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+} 
