@@ -49,6 +49,13 @@ exports.protect = async (req, res, next) => {
       });
     }
 
+    // Check if user is a guest
+    if (user.role === 'guest' || user.email === 'guest@demo.com') {
+      console.log(`Guest user (${user.email}) accessing: ${req.method} ${req.originalUrl}`);
+    } else {
+      console.log(`Authenticated user (${user.email}) accessing: ${req.method} ${req.originalUrl}`);
+    }
+
     // Add user to request object
     req.user = user;
     next();

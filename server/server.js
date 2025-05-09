@@ -11,7 +11,15 @@ const mongoose = require('mongoose');
 
 // Load environment variables first before any other operations
 dotenv.config();
-console.log(process.env.MONGO_URI);
+console.log('Environment loaded'.green);
+
+if (process.env.MONGO_URI) {
+  console.log(`MongoDB URI configured: ${process.env.MONGO_URI}`.green);
+} else {
+  console.error('MONGO_URI is not defined in environment variables'.red.bold);
+  console.error('Please check your .env file and set the MONGO_URI variable'.red);
+}
+
 // Import route files
 const authRoutes = require('./routes/authRoutes');
 const expenseRoutes = require('./routes/expenseRoutes');
@@ -58,8 +66,16 @@ if (process.env.NODE_ENV === 'development') {
 (async function() {
   try {
     console.log('Connecting to MongoDB...'.cyan);
-    await connectDB();
+    const conn = await connectDB();
     console.log('Database connection established'.green.bold);
+    
+    // Print database stats
+    try {
+      const stats = await mongoose.connection.db.stats();
+      console.log(`MongoDB stats: ${stats.collections} collections, ${stats.objects} documents`.cyan);
+    } catch (statsError) {
+      console.warn(`Could not retrieve database stats: ${statsError.message}`.yellow);
+    }
 
     // Mount routes
     app.use('/api/auth', authRoutes);
@@ -75,6 +91,7 @@ if (process.env.NODE_ENV === 'development') {
     });
   } catch (error) {
     console.error(`Server failed to start: ${error.message}`.red.bold);
+    console.error('Error Details:'.red, error);
     console.error('Application is exiting...'.red);
     
     // Exit with failure code

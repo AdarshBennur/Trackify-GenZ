@@ -101,8 +101,11 @@ export const AuthProvider = ({ children }) => {
   // Login as guest user
   const loginAsGuest = async () => {
     try {
-      // Try to use the guest API endpoint
-      const res = await api.post('/auth/guest');
+      // Use the regular login endpoint with guest credentials
+      const res = await api.post('/auth/login', { 
+        email: 'guest@demo.com', 
+        password: 'guest123' 
+      });
       
       dispatch({
         type: 'LOGIN_SUCCESS',
@@ -110,15 +113,16 @@ export const AuthProvider = ({ children }) => {
       });
       
       setAuthToken(res.data.token);
+      return res.data;
     } catch (err) {
-      // If the endpoint doesn't exist or fails, create a guest user locally
+      // If the login fails, create a guest user locally as fallback
       console.log('Using local guest login fallback');
       
       // Create a guest token and user object
       const guestUser = {
         id: 'guest-user',
         username: 'Guest User',
-        email: 'guest@example.com',
+        email: 'guest@demo.com',
         role: 'guest'
       };
       

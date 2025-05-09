@@ -9,6 +9,7 @@ const jwt = require('jsonwebtoken');
 // @access  Public
 exports.register = asyncHandler(async (req, res) => {
   console.log('Registration process started');
+  console.log('Request body:', JSON.stringify(req.body, null, 2));
   
   // Check for validation errors
   const errors = validationResult(req);
@@ -56,23 +57,32 @@ exports.register = asyncHandler(async (req, res) => {
     }
 
     // Create user (password will be hashed in the User model pre-save middleware)
-    console.log('Creating new user...');
-    const user = await User.create({
-      username,
-      email,
-      password
-    });
-
-    if (user) {
-      console.log(`User registered successfully: ${email}`);
-      // Generate JWT token and send response
-      sendTokenResponse(user, 201, res);
-    } else {
-      console.log('Failed to create user');
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid user data'
+    console.log('Creating new user with details:', { username, email, role: 'user' });
+    
+    try {
+      const user = await User.create({
+        username,
+        email,
+        password,
+        role: 'user' // Ensure role is set to 'user' for regular registered users
       });
+
+      console.log('User created with ID:', user._id);
+      
+      if (user) {
+        console.log(`User registered successfully: ${email}`);
+        // Generate JWT token and send response
+        sendTokenResponse(user, 201, res);
+      } else {
+        console.log('Failed to create user - user object is null');
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid user data'
+        });
+      }
+    } catch (createError) {
+      console.error('Error creating user document:', createError);
+      throw createError; // Rethrow to be caught by the outer catch block
     }
   } catch (error) {
     console.error('Error in registration process:', error);
@@ -105,7 +115,7 @@ exports.register = asyncHandler(async (req, res) => {
       });
     } 
     // Handle bcrypt or password hashing errors 
-    else if (error.message.includes('bcrypt')) {
+    else if (error.message && error.message.includes('bcrypt')) {
       console.error('Password hashing error:', error);
       return res.status(500).json({
         success: false,
@@ -149,6 +159,12 @@ exports.login = asyncHandler(async (req, res) => {
       success: false,
       message: 'Please provide an email and password'
     });
+  }
+
+  // Check if the login is for the guest account
+  if (email === 'guest@demo.com') {
+    console.log('Guest login detected, forwarding to guest login handler');
+    return this.guestLogin(req, res);
   }
 
   try {
@@ -197,17 +213,23 @@ exports.guestLogin = asyncHandler(async (req, res) => {
   
   try {
     // Find existing guest user or create new one
-    let guestUser = await User.findOne({ email: 'guest@example.com' });
+    let guestUser = await User.findOne({ email: 'guest@demo.com' });
 
     if (!guestUser) {
       console.log('Creating guest user account');
       // Create a guest user account
       guestUser = await User.create({
         username: 'Guest User',
-        email: 'guest@example.com',
+        email: 'guest@demo.com',
         password: 'guest123', // This will be hashed by the User model's pre-save hook
         role: 'guest'
       });
+    } else {
+      // Ensure the role is set to 'guest' even if it was changed
+      if (guestUser.role !== 'guest') {
+        guestUser.role = 'guest';
+        await guestUser.save();
+      }
     }
 
     console.log('Guest user logged in successfully');
@@ -235,7 +257,7 @@ exports.guestLogin = asyncHandler(async (req, res) => {
           email: guestUser.email,
           role: guestUser.role
         },
-        message: 'Logged in as guest. You can explore all features!'
+        message: 'Logged in as guest. You can explore all features with sample data!'
       });
   } catch (error) {
     console.error('Error in guest login process:', error);

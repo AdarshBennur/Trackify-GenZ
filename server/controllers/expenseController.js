@@ -3,10 +3,93 @@ const { validationResult } = require('express-validator');
 const asyncHandler = require('express-async-handler');
 const mongoose = require('mongoose');
 
+// Hardcoded dummy expenses for guest users
+const GUEST_EXPENSES = [
+  {
+    _id: 'guest-expense-1',
+    title: 'Grocery shopping',
+    amount: 85.95,
+    category: 'Food',
+    date: new Date('2023-05-07T14:30:00Z'),
+    notes: 'Weekly grocery shopping',
+    currency: { code: 'USD', symbol: '$' },
+    user: 'guest-user'
+  },
+  {
+    _id: 'guest-expense-2',
+    title: 'Electricity bill',
+    amount: 125.75,
+    category: 'Utilities',
+    date: new Date('2023-05-04T10:00:00Z'),
+    notes: 'Monthly electric bill',
+    currency: { code: 'USD', symbol: '$' },
+    user: 'guest-user'
+  },
+  {
+    _id: 'guest-expense-3',
+    title: 'Movie tickets',
+    amount: 35.00,
+    category: 'Entertainment',
+    date: new Date('2023-05-05T19:45:00Z'),
+    notes: 'Movie night with friends',
+    currency: { code: 'USD', symbol: '$' },
+    user: 'guest-user'
+  },
+  {
+    _id: 'guest-expense-4',
+    title: 'Uber ride',
+    amount: 24.50,
+    category: 'Transportation',
+    date: new Date('2023-05-06T08:15:00Z'),
+    notes: 'Ride to work',
+    currency: { code: 'USD', symbol: '$' },
+    user: 'guest-user'
+  },
+  {
+    _id: 'guest-expense-5',
+    title: 'Internet bill',
+    amount: 65.00,
+    category: 'Utilities',
+    date: new Date('2023-05-02T11:30:00Z'),
+    notes: 'Monthly internet service',
+    currency: { code: 'USD', symbol: '$' },
+    user: 'guest-user'
+  },
+  {
+    _id: 'guest-expense-6',
+    title: 'Restaurant dinner',
+    amount: 94.80,
+    category: 'Food',
+    date: new Date('2023-05-01T20:15:00Z'),
+    notes: 'Dinner with family',
+    currency: { code: 'USD', symbol: '$' },
+    user: 'guest-user'
+  }
+];
+
 // @desc    Get all expenses for a user
 // @route   GET /api/expenses
 // @access  Private
 exports.getExpenses = asyncHandler(async (req, res) => {
+  // Check if the user is a guest
+  if (req.user.role === 'guest' || req.user.email === 'guest@demo.com') {
+    console.log('Returning guest expenses');
+    
+    // Return hardcoded guest expenses
+    return res.status(200).json({
+      success: true,
+      count: GUEST_EXPENSES.length,
+      pagination: {
+        page: 1,
+        limit: GUEST_EXPENSES.length,
+        total: GUEST_EXPENSES.length,
+        pages: 1
+      },
+      data: GUEST_EXPENSES
+    });
+  }
+  
+  // For registered users, continue with normal flow
   // Build query
   let query = { user: req.user.id };
   
@@ -52,6 +135,24 @@ exports.getExpenses = asyncHandler(async (req, res) => {
 // @route   GET /api/expenses/:id
 // @access  Private
 exports.getExpense = asyncHandler(async (req, res) => {
+  // Check if user is guest and looking for a guest expense
+  if ((req.user.role === 'guest' || req.user.email === 'guest@demo.com') && 
+      req.params.id.startsWith('guest-expense-')) {
+    
+    const guestExpense = GUEST_EXPENSES.find(exp => exp._id === req.params.id);
+    
+    if (!guestExpense) {
+      res.status(404);
+      throw new Error('Expense not found');
+    }
+    
+    return res.status(200).json({
+      success: true,
+      data: guestExpense
+    });
+  }
+  
+  // For registered users
   const expense = await Expense.findById(req.params.id);
   
   if (!expense) {
@@ -75,6 +176,26 @@ exports.getExpense = asyncHandler(async (req, res) => {
 // @route   POST /api/expenses
 // @access  Private
 exports.createExpense = asyncHandler(async (req, res) => {
+  // For guest users, return success but don't actually save
+  if (req.user.role === 'guest' || req.user.email === 'guest@demo.com') {
+    console.log('Guest user trying to create expense - returning mock response');
+    
+    // Create a mock response with a new ID
+    const mockExpense = {
+      _id: `guest-expense-${Date.now()}`,
+      ...req.body,
+      user: req.user.id,
+      date: new Date(),
+      createdAt: new Date()
+    };
+    
+    return res.status(201).json({
+      success: true,
+      data: mockExpense
+    });
+  }
+  
+  // For registered users, save to database
   // Add user to request body
   req.body.user = req.user.id;
   
@@ -90,6 +211,27 @@ exports.createExpense = asyncHandler(async (req, res) => {
 // @route   PUT /api/expenses/:id
 // @access  Private
 exports.updateExpense = asyncHandler(async (req, res) => {
+  // For guest users
+  if ((req.user.role === 'guest' || req.user.email === 'guest@demo.com') && 
+      req.params.id.startsWith('guest-expense-')) {
+    
+    console.log('Guest user trying to update expense - returning mock response');
+    
+    // Create a mock response
+    const mockExpense = {
+      _id: req.params.id,
+      ...req.body,
+      user: req.user.id,
+      updatedAt: new Date()
+    };
+    
+    return res.status(200).json({
+      success: true,
+      data: mockExpense
+    });
+  }
+  
+  // For registered users
   let expense = await Expense.findById(req.params.id);
   
   if (!expense) {
@@ -118,6 +260,19 @@ exports.updateExpense = asyncHandler(async (req, res) => {
 // @route   DELETE /api/expenses/:id
 // @access  Private
 exports.deleteExpense = asyncHandler(async (req, res) => {
+  // For guest users
+  if ((req.user.role === 'guest' || req.user.email === 'guest@demo.com') && 
+      req.params.id.startsWith('guest-expense-')) {
+    
+    console.log('Guest user trying to delete expense - returning mock success');
+    
+    return res.status(200).json({
+      success: true,
+      data: {}
+    });
+  }
+  
+  // For registered users
   const expense = await Expense.findById(req.params.id);
   
   if (!expense) {
@@ -131,7 +286,8 @@ exports.deleteExpense = asyncHandler(async (req, res) => {
     throw new Error('Not authorized to delete this expense');
   }
   
-  await expense.remove();
+  // Use deleteOne() instead of remove() as remove() is deprecated
+  await Expense.deleteOne({ _id: req.params.id });
   
   res.status(200).json({
     success: true,

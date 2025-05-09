@@ -45,6 +45,7 @@ UserSchema.pre('save', async function(next) {
   try {
     // Only hash the password if it has been modified (or is new)
     if (!this.isModified('password')) {
+      console.log('Password not modified, skipping hashing');
       return next();
     }
     
@@ -60,7 +61,7 @@ UserSchema.pre('save', async function(next) {
     next();
   } catch (error) {
     console.error('Error hashing password:', error);
-    next(new Error('Error hashing password. Please try again.'));
+    next(error); // Pass the error to the next middleware
   }
 });
 
@@ -96,4 +97,6 @@ UserSchema.methods.matchPassword = async function(enteredPassword) {
   }
 };
 
-module.exports = mongoose.model('User', UserSchema); 
+const User = mongoose.model('User', UserSchema);
+
+module.exports = User; 
