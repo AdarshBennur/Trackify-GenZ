@@ -1,25 +1,36 @@
 {
-  "name": "expense-tracker",
+  "name": "trackify-genz",
   "version": "1.0.0",
-  "description": "Expense Tracker Application with React frontend and Node.js backend",
-  "main": "index.js",
+  "description": "Full-stack expense tracking application",
+  "main": "server/server.js",
   "scripts": {
-    "dev": "concurrently \"npm run server\" \"npm run client\"",
-    "server": "cd server && nodemon server.js",
+    "start": "node server/server.js",
+    "server": "cd server && npm run dev",
     "client": "cd client && npm run dev",
-    "install-deps": "npm install && cd client && npm install && cd ../server && npm install"
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "install-server": "cd server && npm install",
+    "install-client": "cd client && npm install",
+    "install-all": "npm install && npm run install-server && npm run install-client",
+    "build": "cd client && npm run build",
+    "setup-replit": "npm run install-all"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AdarshBennur/Trackify-GenZ.git"
   },
   "keywords": [
     "expense",
     "tracker",
+    "mern",
     "react",
-    "node",
-    "mongodb"
+    "nodejs"
   ],
   "author": "",
   "license": "ISC",
-  "devDependencies": {
-    "concurrently": "^8.2.0",
-    "nodemon": "^3.0.1"
+  "dependencies": {
+    "concurrently": "^8.2.0"
   }
 } 
