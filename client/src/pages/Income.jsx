@@ -6,102 +6,32 @@ import {
   PlusIcon,
   XMarkIcon,
   FunnelIcon,
-  ArrowDownIcon,
-  ArrowUpIcon,
   PencilIcon,
   TrashIcon,
-  ChartBarIcon,
-  BanknotesIcon
+  BanknotesIcon,
+  CalendarIcon,
+  ArrowTrendingUpIcon
 } from '@heroicons/react/24/outline';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { useForm } from 'react-hook-form';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-
-// Mock income data
-const MOCK_INCOMES = [
-  { 
-    _id: '1', 
-    title: 'Monthly Salary', 
-    amount: 3500, 
-    category: 'Salary', 
-    date: '2023-05-01T09:00:00Z',
-    isRecurring: true,
-    frequency: 'monthly',
-    notes: 'Regular monthly income'
-  },
-  { 
-    _id: '2', 
-    title: 'Freelance Project', 
-    amount: 850, 
-    category: 'Freelance', 
-    date: '2023-05-10T15:30:00Z',
-    isRecurring: false,
-    frequency: 'one-time',
-    notes: 'Website development project'
-  },
-  { 
-    _id: '3', 
-    title: 'Dividend Payment', 
-    amount: 120, 
-    category: 'Dividends', 
-    date: '2023-05-15T12:00:00Z',
-    isRecurring: true,
-    frequency: 'quarterly',
-    notes: 'Stock dividends'
-  },
-  { 
-    _id: '4', 
-    title: 'Rental Income', 
-    amount: 1200, 
-    category: 'Rental', 
-    date: '2023-05-05T10:00:00Z',
-    isRecurring: true,
-    frequency: 'monthly',
-    notes: 'Apartment rental'
-  },
-  { 
-    _id: '5', 
-    title: 'Interest Payment', 
-    amount: 45.50, 
-    category: 'Interest', 
-    date: '2023-05-20T14:00:00Z',
-    isRecurring: true,
-    frequency: 'monthly',
-    notes: 'Savings account interest'
-  }
-];
-
-// Mock stats data
-const MOCK_STATS = {
-  total: 5715.50,
-  average: 1143.10,
-  timeStats: [
-    { _id: { day: 1 }, total: 3500 },
-    { _id: { day: 5 }, total: 1200 },
-    { _id: { day: 10 }, total: 850 },
-    { _id: { day: 15 }, total: 120 },
-    { _id: { day: 20 }, total: 45.50 }
-  ],
-  categoryStats: [
-    { _id: 'Salary', total: 3500 },
-    { _id: 'Rental', total: 1200 },
-    { _id: 'Freelance', total: 850 },
-    { _id: 'Dividends', total: 120 },
-    { _id: 'Interest', total: 45.50 }
-  ]
-};
+import { useAuth } from '../context/AuthContext';
+import api from '../utils/api';
+import { formatINR, formatINRCompact } from '../utils/currency';
 
 const Income = () => {
   const [incomes, setIncomes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [showStats, setShowStats] = useState(false);
+  const [showStats, setShowStats] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [currentIncome, setCurrentIncome] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [stats, setStats] = useState(null);
   const [statsPeriod, setStatsPeriod] = useState('month');
+  const [submitting, setSubmitting] = useState(false);
+  const { user, isAuthenticated, isGuestUser } = useAuth();
   
   // Filters
   const [filters, setFilters] = useState({
@@ -157,90 +87,272 @@ const Income = () => {
   // Fetch incomes with applied filters
   useEffect(() => {
     fetchIncomes();
-  }, [filters]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters, isAuthenticated, user]);
 
   // Function to fetch and filter incomes
-  const fetchIncomes = () => {
+  const fetchIncomes = async () => {
     setLoading(true);
     
-    // Simulate API delay
-    setTimeout(() => {
-      try {
-        // Filter the mock data based on filters
-        let filtered = [...MOCK_INCOMES];
+    try {
+      // Only fetch real data for authenticated non-guest users
+      if (isAuthenticated && !isGuestUser()) {
+        // Build query parameters
+        const queryParams = {};
         
         if (filters.category && filters.category !== 'All') {
-          filtered = filtered.filter(income => income.category === filters.category);
+          queryParams.category = filters.category;
         }
         
         if (filters.startDate) {
-          filtered = filtered.filter(income => new Date(income.date) >= filters.startDate);
+          queryParams.startDate = filters.startDate.toISOString();
         }
         
         if (filters.endDate) {
-          filtered = filtered.filter(income => new Date(income.date) <= filters.endDate);
+          queryParams.endDate = filters.endDate.toISOString();
         }
         
         if (filters.frequency) {
-          filtered = filtered.filter(income => income.frequency === filters.frequency);
+          queryParams.frequency = filters.frequency;
         }
         
-        setIncomes(filtered);
-      } catch (error) {
-        console.error('Error processing incomes:', error);
-        toast.error('Failed to load incomes. Please try again.');
-      } finally {
-        setLoading(false);
+        // Call API to get this user's income data
+        const response = await api.get('/incomes', { params: queryParams });
+        setIncomes(response.data.data || []);
+      } else {
+        // For guest or unauthenticated users, show empty state
+        setIncomes([]);
       }
-    }, 500);
+    } catch (error) {
+      console.error('Error fetching incomes:', error);
+      toast.error('Failed to load incomes. Please try again.');
+      setIncomes([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Fetch stats when showing stats or changing period
+  // Fetch stats when component mounts or statsPeriod changes (removed showStats dependency)
   useEffect(() => {
-    if (showStats) {
-      fetchStats();
-    }
-  }, [showStats, statsPeriod]);
+    // Add a simple error catch to prevent unhandled promise rejections
+    (async () => {
+      try {
+        await fetchStats();
+      } catch (error) {
+        // Silently log errors without showing error toasts
+        console.log('Stats fetch error in effect:', error.message);
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statsPeriod, isAuthenticated, user]);
 
-  // Fetch mock income statistics
-  const fetchStats = () => {
-    // Simulate API delay
-    setTimeout(() => {
-      setStats(MOCK_STATS);
-    }, 300);
+  // Fetch income statistics with improved error handling
+  const fetchStats = async () => {
+    // Don't set loading here since the toggleStats handles loading state
+    
+    try {
+      // Only fetch real stats for authenticated non-guest users
+      if (isAuthenticated && !isGuestUser()) {
+        // Attempt to fetch stats from API
+        try {
+          const response = await api.get('/incomes/stats', {
+            params: { period: statsPeriod }
+          });
+          
+          if (response.data && response.data.success) {
+            setStats(response.data.data);
+            return true; // Successful fetch
+          } 
+        } catch (err) {
+          // Silently handle the error and proceed to fallback
+          console.log('Stats API fallback:', err.message);
+        }
+        
+        // Fallback: calculate from current income data
+        try {
+          calculateStatsFromIncomes();
+          return true; // Successful calculation
+        } catch (calcError) {
+          console.error('Error calculating stats:', calcError);
+          throw calcError; // Re-throw only if both API and calculation failed
+        }
+      } else {
+        // For guest or unauthenticated users, show empty stats
+        setStats({
+          total: 0,
+          average: 0,
+          count: 0,
+          timeStats: [],
+          categoryStats: []
+        });
+        return true;
+      }
+    } catch (error) {
+      console.error('Critical error fetching income stats:', error);
+      // Only show error toast for complete failures
+      if (!stats) {
+        // Set empty stats in case of error
+        setStats({
+          total: 0,
+          average: 0,
+          count: 0,
+          timeStats: [],
+          categoryStats: []
+        });
+      }
+      throw error; // Re-throw so caller knows there was an issue
+    }
+  };
+  
+  // Calculate stats from current income data
+  const calculateStatsFromIncomes = () => {
+    // If no incomes, set empty stats and exit
+    if (!incomes || incomes.length === 0) {
+      setStats({
+        total: 0,
+        average: 0,
+        count: 0,
+        timeStats: [],
+        categoryStats: []
+      });
+      return;
+    }
+    
+    try {
+      // Calculate total income
+      const total = incomes.reduce((sum, income) => sum + parseFloat(income.amount), 0);
+      
+      // Calculate average income
+      const average = total / incomes.length;
+      
+      // Determine date format based on period
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth();
+      
+      // Prepare time stats based on period
+      let timeStats = [];
+      
+      if (statsPeriod === 'month') {
+        // Create a map for all days of the month
+        const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+        const dayMap = {};
+        
+        // Initialize all days with 0
+        for (let day = 1; day <= daysInMonth; day++) {
+          dayMap[day] = 0;
+        }
+        
+        // Populate with actual income data
+        incomes.forEach(income => {
+          const date = new Date(income.date);
+          // Only include this month's data
+          if (date.getMonth() === currentMonth && date.getFullYear() === currentYear) {
+            const day = date.getDate();
+            dayMap[day] += parseFloat(income.amount);
+          }
+        });
+        
+        // Convert to array format for chart
+        timeStats = Object.keys(dayMap).map(day => ({
+          _id: { day: parseInt(day) },
+          total: dayMap[day]
+        }));
+      } else if (statsPeriod === 'year') {
+        // Create a map for all months
+        const monthMap = {};
+        
+        // Initialize all months with 0
+        for (let month = 0; month < 12; month++) {
+          monthMap[month] = 0;
+        }
+        
+        // Populate with actual income data
+        incomes.forEach(income => {
+          const date = new Date(income.date);
+          // Only include this year's data
+          if (date.getFullYear() === currentYear) {
+            const month = date.getMonth();
+            monthMap[month] += parseFloat(income.amount);
+          }
+        });
+        
+        // Convert to array format for chart
+        timeStats = Object.keys(monthMap).map(month => ({
+          _id: { month: parseInt(month) },
+          total: monthMap[month]
+        }));
+      }
+      
+      // Group by category
+      const categoryMap = {};
+      incomes.forEach(income => {
+        if (!categoryMap[income.category]) {
+          categoryMap[income.category] = 0;
+        }
+        categoryMap[income.category] += parseFloat(income.amount);
+      });
+      
+      const categoryStats = Object.keys(categoryMap).map(category => ({
+        _id: category,
+        total: categoryMap[category]
+      }));
+      
+      setStats({
+        total,
+        average,
+        count: incomes.length,
+        timeStats,
+        categoryStats
+      });
+    } catch (error) {
+      console.error('Error calculating stats from incomes:', error);
+      // Set fallback stats without showing error to user
+      setStats({
+        total: 0,
+        average: 0,
+        count: 0,
+        timeStats: [],
+        categoryStats: []
+      });
+    }
   };
 
-  // Format stats data for charts
+  // Update the time stats formatting to properly handle both month and year periods
   const formatTimeStats = (timeStats) => {
-    if (!timeStats) return [];
+    if (!timeStats || timeStats.length === 0) return [];
     
-    // For monthly data (days of month)
-    if (timeStats[0]?._id?.day) {
-      return timeStats.map(stat => ({
-        name: `Day ${stat._id.day}`,
-        amount: stat.total
+    if (statsPeriod === 'month') {
+      // Sort by day
+      const sortedData = [...timeStats].sort((a, b) => 
+        (a._id.day || 0) - (b._id.day || 0)
+      );
+      
+      return sortedData.map(item => ({
+        name: `Day ${item._id.day || ''}`,
+        amount: item.total || 0
       }));
-    }
-    
-    // For yearly data (months)
-    if (timeStats[0]?._id?.month) {
+    } else { // year period
       const monthNames = [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
         'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
       ];
       
-      return timeStats.map(stat => ({
-        name: monthNames[stat._id.month - 1],
-        amount: stat.total
+      // Sort by month number
+      const sortedData = [...timeStats].sort((a, b) => 
+        (a._id.month || 0) - (b._id.month || 0)
+      );
+      
+      return sortedData.map(item => ({
+        name: monthNames[item._id.month || 0],
+        amount: item.total || 0
       }));
     }
-    
-    return [];
   };
 
   // Format category stats for charts
   const formatCategoryStats = (categoryStats) => {
-    if (!categoryStats) return [];
+    if (!categoryStats || categoryStats.length === 0) return [];
     
     return categoryStats.map(stat => ({
       name: stat._id,
@@ -252,54 +364,133 @@ const Income = () => {
   const totalIncome = incomes.reduce((sum, income) => sum + income.amount, 0);
 
   // Handle form submission
-  const onSubmit = (data) => {
+  const onSubmit = async (data) => {
     try {
-      // Ensure date is in the right format
-      const formattedData = {
-        ...data,
-        date: data.date instanceof Date ? data.date : new Date(data.date),
-        // Convert string 'true'/'false' to boolean
-        isRecurring: data.isRecurring === true || data.isRecurring === 'true'
-      };
-
-      if (isEditing) {
-        // Update existing income
-        const updatedIncome = {
-          ...currentIncome,
-          ...formattedData
-        };
-        
-        setIncomes(incomes.map(item => (item._id === currentIncome._id ? updatedIncome : item)));
-        toast.success('Income updated successfully!');
-      } else {
-        // Add new income
-        const newIncome = {
-          _id: Date.now().toString(),
-          ...formattedData,
-          date: formattedData.date.toISOString()
-        };
-        
-        setIncomes([newIncome, ...incomes]);
-        toast.success('Income added successfully!');
+      // Set submitting state to prevent multiple submissions
+      setSubmitting(true);
+      
+      // Ensure form data is properly formatted
+      const numAmount = parseFloat(data.amount);
+      if (isNaN(numAmount) || numAmount <= 0) {
+        toast.error('Please enter a valid amount greater than zero');
+        setSubmitting(false);
+        return;
       }
       
-      // Reset the form and close it
-      reset();
-      setShowForm(false);
-      setIsEditing(false);
-      setCurrentIncome(null);
+      // Format data for API
+      const newIncome = {
+        ...data,
+        amount: numAmount,
+        date: data.date.toISOString(),
+        // Ensure currency data is present
+        currency: {
+          code: 'INR',
+          symbol: '₹',
+          rate: 1
+        }
+      };
+      
+      console.log('Submitting income data:', newIncome);
+      
+      let response;
+      
+      if (isEditing) {
+        // Update existing income
+        response = await api.put(`/incomes/${currentIncome._id}`, newIncome);
+        
+        if (response.data && response.data.success) {
+          // Update local state with updated income
+          setIncomes(incomes.map(inc => 
+            inc._id === currentIncome._id ? response.data.data : inc
+          ));
+          toast.success('Income updated successfully');
+          
+          // Close form and reset
+          setShowForm(false);
+          setIsEditing(false);
+          setCurrentIncome(null);
+          reset();
+        
+          // Refresh stats if showing
+          if (showStats) {
+            try {
+              await fetchStats();
+            } catch (statsError) {
+              // Just log the error, don't show to user since the main action succeeded
+              console.log('Stats refresh error:', statsError.message);
+            }
+          } else {
+            // Show stats after updating income
+            setShowStats(true);
+          }
+        }
+      } else {
+        // Add new income
+        response = await api.post('/incomes', newIncome);
+        
+        if (response.data && response.data.success) {
+          // Add new income to local state
+          setIncomes([response.data.data, ...incomes]);
+          toast.success('Income added successfully');
+          
+          // Close form and reset
+          setShowForm(false);
+          setIsEditing(false);
+          setCurrentIncome(null);
+          reset();
+        
+          // Refresh stats if showing
+          if (showStats) {
+            try {
+              await fetchStats();
+            } catch (statsError) {
+              // Just log the error, don't show to user since the main action succeeded
+              console.log('Stats refresh error:', statsError.message);
+            }
+          } else {
+            // Show stats after adding income
+            setShowStats(true);
+          }
+        }
+      }
     } catch (error) {
-      console.error('Error processing income:', error);
-      toast.error('Failed to process income. Please try again.');
+      console.error('Error saving income:', error);
+      
+      // Display specific error message if available
+      if (error.response && error.response.data) {
+        const errorData = error.response.data;
+        if (errorData.message) {
+          toast.error(errorData.message);
+        } else if (errorData.errors && errorData.errors.length > 0) {
+          errorData.errors.forEach(err => toast.error(err.msg || err));
+        } else {
+          toast.error('Failed to save income. Please try again.');
+        }
+      } else if (error.message) {
+        toast.error(`Error: ${error.message}`);
+      } else {
+        toast.error('Failed to save income. Please try again.');
+      }
+    } finally {
+      setSubmitting(false);
     }
   };
   
   // Handle income deletion
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this income?')) {
       try {
-        setIncomes(incomes.filter(income => income._id !== id));
-        toast.success('Income deleted successfully!');
+        const response = await api.delete(`/incomes/${id}`);
+        
+        if (response.data.success) {
+          setIncomes(incomes.filter(income => income._id !== id));
+          toast.success('Income deleted successfully!');
+          
+          // Refresh stats if showing
+          if (showStats) {
+            fetchStats();
+          }
+        }
       } catch (error) {
         console.error('Error deleting income:', error);
         toast.error('Failed to delete income. Please try again.');
@@ -338,6 +529,52 @@ const Income = () => {
     setShowFilters(false);
   };
 
+  // Empty state component
+  const EmptyState = () => (
+    <div className="flex flex-col items-center justify-center p-8 bg-white rounded-lg shadow-sm text-center">
+      <div className="text-gray-400 mb-4">
+        <BanknotesIcon className="h-16 w-16" />
+      </div>
+      <h3 className="text-xl font-medium text-gray-700 mb-2">No income data yet</h3>
+      <p className="text-gray-500 mb-4">Add your first income record to start tracking</p>
+      <button
+        onClick={() => {
+          setShowForm(true);
+          setIsEditing(false);
+          setCurrentIncome(null);
+          reset();
+        }}
+        className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors"
+      >
+        Add Your First Income
+      </button>
+    </div>
+  );
+
+  // Handle add button click - update to match modal behavior of Expenses page
+  const handleAddClick = () => {
+    setShowForm(true);
+    setIsEditing(false);
+    setCurrentIncome(null);
+    reset();
+  };
+
+  // StatCard component for income stats - Add back the component definition
+  const StatCard = ({ title, value, subtitle, icon: Icon, color }) => (
+    <div className="card p-6 h-full">
+      <div className="flex items-start">
+        <div className={`w-12 h-12 rounded-full flex items-center justify-center bg-${color}-100`}>
+          <Icon className={`h-6 w-6 text-[#D4AF37]`} />
+        </div>
+        <div className="ml-4">
+          <h3 className="text-lg font-medium text-gray-900">{title}</h3>
+          <p className="text-3xl font-bold text-[#2E8B57]">{value}</p>
+          {subtitle && <p className="text-sm text-[#A0A0A0] mt-1">{subtitle}</p>}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <motion.div
         initial={{ opacity: 0 }}
@@ -345,325 +582,368 @@ const Income = () => {
         exit={{ opacity: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Income Tracker</h1>
-            <p className="mt-1 text-gray-600">
-              Track and manage all your income sources in one place.
+            <h1 className="text-2xl font-bold text-gray-900">Income Management</h1>
+            <p className="mt-1 text-[#A0A0A0]">
+              Track, manage, and analyze all your income sources
             </p>
           </div>
-          <div className="mt-4 sm:mt-0 flex items-center space-x-3">
+          
+          <div className="mt-4 md:mt-0 flex flex-wrap gap-3">
             <button
-              onClick={() => setShowStats(!showStats)}
-              className="btn-outline flex items-center"
+              onClick={handleAddClick}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md hover:shadow-lg font-medium rounded-lg px-6 py-2.5 flex items-center transition-all duration-300"
             >
-              <ChartBarIcon className="h-5 w-5 mr-2" />
-              {showStats ? 'Hide Stats' : 'Show Stats'}
+              <PlusIcon className="h-5 w-5 mr-2" />
+              Add Income
             </button>
-            {!showForm && (
-              <button
-                onClick={() => setShowForm(true)}
-                className="btn-primary flex items-center"
-              >
-                <PlusIcon className="h-5 w-5 mr-2" />
-                Add Income
-              </button>
-            )}
+            
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`btn ${showFilters ? 'btn-secondary' : 'btn-outline'} flex items-center`}
+            >
+              <FunnelIcon className="h-5 w-5 mr-2" />
+              {showFilters ? 'Hide Filters' : 'Filter'}
+            </button>
           </div>
         </div>
 
-        {/* Stats Section */}
-        {showStats && (
-          <div className="mb-8 card p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold text-gray-900">Income Statistics</h2>
-              <div className="flex space-x-2">
-                <button 
-                  onClick={() => setStatsPeriod('month')}
-                  className={`px-3 py-1 text-sm rounded-md ${
-                    statsPeriod === 'month' 
-                      ? 'bg-primary-100 text-primary-800' 
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  Monthly
-                </button>
-                <button 
-                  onClick={() => setStatsPeriod('year')}
-                  className={`px-3 py-1 text-sm rounded-md ${
-                    statsPeriod === 'year' 
-                      ? 'bg-primary-100 text-primary-800' 
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  Yearly
-                </button>
-              </div>
-            </div>
-            
-            {stats ? (
-              <div className="space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                  <div className="card bg-primary-50 p-4">
-                    <div className="text-sm text-primary-600 font-medium">Total Income</div>
-                    <div className="mt-2 text-2xl font-bold text-primary-900">
-                      ${stats.total.toFixed(2)}
-                    </div>
-                    <div className="text-xs text-primary-500">
-                      {statsPeriod === 'month' ? 'This Month' : 'This Year'}
-                    </div>
-                  </div>
-                  
-                  <div className="card bg-green-50 p-4">
-                    <div className="text-sm text-green-600 font-medium">Number of Entries</div>
-                    <div className="mt-2 text-2xl font-bold text-green-900">
-                      {stats.count}
-                    </div>
-                    <div className="text-xs text-green-500">
-                      {statsPeriod === 'month' ? 'This Month' : 'This Year'}
-                    </div>
-                  </div>
-                  
-                  <div className="card bg-blue-50 p-4">
-                    <div className="text-sm text-blue-600 font-medium">
-                      {statsPeriod === 'month' ? 'Daily Average' : 'Monthly Average'}
-                    </div>
-                    <div className="mt-2 text-2xl font-bold text-blue-900">
-                      ${(statsPeriod === 'month' 
-                        ? stats.total / 30 
-                        : stats.total / 12).toFixed(2)}
-                    </div>
-                    <div className="text-xs text-blue-500">
-                      {statsPeriod === 'month' ? 'Per Day' : 'Per Month'}
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Time-based Chart */}
-                <div className="mb-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">
-                    {statsPeriod === 'month' ? 'Daily Income' : 'Monthly Income'}
-                  </h3>
-                  <div className="h-72">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={formatTimeStats(stats.timeStats)}
-                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip 
-                          formatter={(value) => [`$${value.toFixed(2)}`, 'Amount']}
-                        />
-                        <Legend />
-                        <Bar 
-                          dataKey="amount" 
-                          name="Income" 
-                          fill="#4f46e5" 
-                          radius={[4, 4, 0, 0]}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-                
-                {/* Category Chart */}
-                <div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Income by Category</h3>
-                  <div className="h-72">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={formatCategoryStats(stats.categoryStats)}
-                        layout="vertical"
-                        margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis type="number" />
-                        <YAxis dataKey="name" type="category" width={80} />
-                        <Tooltip 
-                          formatter={(value) => [`$${value.toFixed(2)}`, 'Amount']}
-                        />
-                        <Legend />
-                        <Bar 
-                          dataKey="amount" 
-                          name="Income" 
-                          fill="#10b981" 
-                          radius={[0, 4, 4, 0]}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="flex justify-center items-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-600"></div>
-              </div>
-            )}
-          </div>
-        )}
+        {/* Stats Grid - Similar to Dashboard */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <StatCard
+            title="Total Income"
+            value={formatINR(stats?.total || 0)}
+            subtitle={`Across ${stats?.categoryStats?.length || 0} categories`}
+            icon={BanknotesIcon}
+            color="primary"
+          />
+          <StatCard
+            title="Average Income"
+            value={formatINR(stats?.average || 0)}
+            subtitle={statsPeriod === 'month' ? "Per entry this month" : "Per entry this year"}
+            icon={CalendarIcon}
+            color="secondary"
+          />
+          <StatCard
+            title="Top Category"
+            value={stats?.categoryStats && stats?.categoryStats.length > 0 
+              ? stats.categoryStats[0]?._id 
+              : 'None'}
+            subtitle={stats?.categoryStats && stats?.categoryStats.length > 0 
+              ? formatINR(stats.categoryStats[0]?.total)
+              : 'No categories yet'}
+            icon={ArrowTrendingUpIcon}
+            color="accent"
+          />
+        </div>
 
-        {/* Income Form */}
-        {showForm && (
-          <div className="mb-8 card p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold text-gray-900">
-                {isEditing ? 'Edit Income' : 'Add New Income'}
-              </h2>
-              <button
-                onClick={() => {
-                  setShowForm(false);
-                  setIsEditing(false);
-                  setCurrentIncome(null);
-                  reset();
-                }}
-                className="text-gray-400 hover:text-gray-500"
+        {/* Stats Section - Always visible now */}
+        <div className="mb-8 card p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold text-gray-900">Income Statistics</h2>
+            <div className="flex space-x-2">
+              <button 
+                onClick={() => setStatsPeriod('month')}
+                className={`px-3 py-1 text-sm rounded-md ${
+                  statsPeriod === 'month' 
+                    ? 'bg-primary-100 text-primary-800' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
               >
-                <XMarkIcon className="h-6 w-6" />
+                Monthly
+              </button>
+              <button 
+                onClick={() => setStatsPeriod('year')}
+                className={`px-3 py-1 text-sm rounded-md ${
+                  statsPeriod === 'year' 
+                    ? 'bg-primary-100 text-primary-800' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                Yearly
               </button>
             </div>
-
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label htmlFor="title" className="form-label">
-                    Income Title
-                  </label>
-                  <input
-                    id="title"
-                    type="text"
-                    className="form-input"
-                    placeholder="e.g., Monthly Salary, Freelance Project"
-                    {...register('title', { required: 'Title is required' })}
-                  />
-                  {errors.title && (
-                    <p className="form-error">{errors.title.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label htmlFor="amount" className="form-label">
-                    Amount ($)
-                  </label>
-                  <input
-                    id="amount"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    className="form-input"
-                    placeholder="0.00"
-                    {...register('amount', {
-                      required: 'Amount is required',
-                      min: {
-                        value: 0,
-                        message: 'Amount must be positive'
-                      }
-                    })}
-                  />
-                  {errors.amount && (
-                    <p className="form-error">{errors.amount.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label htmlFor="category" className="form-label">
-                    Category
-                  </label>
-                  <select
-                    id="category"
-                    className="form-input"
-                    {...register('category', { required: 'Category is required' })}
-                  >
-                    <option value="">Select a category</option>
-                    {categories.map(category => (
-                      <option key={category} value={category}>
-                        {category}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.category && (
-                    <p className="form-error">{errors.category.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label htmlFor="date" className="form-label">
-                    Date Received
-                  </label>
-                  <DatePicker
-                    selected={watch('date')}
-                    onChange={(date) => setValue('date', date)}
-                    className="form-input w-full"
-                    dateFormat="MMMM d, yyyy"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex items-center mb-2">
-                    <input
-                      id="isRecurring"
-                      type="checkbox"
-                      className="form-checkbox h-4 w-4 text-primary-600"
-                      {...register('isRecurring')}
-                    />
-                    <label htmlFor="isRecurring" className="ml-2 form-label mb-0">
-                      Recurring Income
-                    </label>
+          </div>
+          
+          {stats ? (
+            <div className="space-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="card bg-primary-50 p-4">
+                  <div className="text-sm text-primary-600 font-medium">Total Income</div>
+                  <div className="mt-2 text-2xl font-bold text-primary-900">
+                    {formatINR(stats.total)}
                   </div>
-                  
-                  {watch('isRecurring') && (
-                    <div>
-                      <label htmlFor="frequency" className="form-label">
-                        Frequency
-                      </label>
-                      <select
-                        id="frequency"
-                        className="form-input"
-                        {...register('frequency')}
+                  <div className="text-xs text-primary-500">
+                    {statsPeriod === 'month' ? 'This Month' : 'This Year'}
+                  </div>
+                </div>
+                
+                <div className="card bg-green-50 p-4">
+                  <div className="text-sm text-green-600 font-medium">Number of Entries</div>
+                  <div className="mt-2 text-2xl font-bold text-green-900">
+                    {stats.count}
+                  </div>
+                  <div className="text-xs text-green-500">
+                    {statsPeriod === 'month' ? 'This Month' : 'This Year'}
+                  </div>
+                </div>
+                
+                <div className="card bg-blue-50 p-4">
+                  <div className="text-sm text-blue-600 font-medium">
+                    {statsPeriod === 'month' ? 'Daily Average' : 'Monthly Average'}
+                  </div>
+                  <div className="mt-2 text-2xl font-bold text-blue-900">
+                    {formatINR(statsPeriod === 'month' 
+                      ? stats.total / 30 
+                      : stats.total / 12)}
+                  </div>
+                  <div className="text-xs text-blue-500">
+                    {statsPeriod === 'month' ? 'Per Day' : 'Per Month'}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Time-based Chart */}
+              <div className="mb-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                  {statsPeriod === 'month' ? 'Daily Income' : 'Monthly Income'}
+                </h3>
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={formatTimeStats(stats.timeStats)}
+                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip 
+                        formatter={(value) => [formatINR(value), 'Amount']}
+                      />
+                      <Legend />
+                      <Bar 
+                        dataKey="amount" 
+                        name="Income" 
+                        fill="#4f46e5" 
+                        radius={[4, 4, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+              
+              {/* Category Chart */}
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Income by Category</h3>
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={formatCategoryStats(stats.categoryStats)}
+                      layout="vertical"
+                      margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" />
+                      <YAxis dataKey="name" type="category" width={80} />
+                      <Tooltip 
+                        formatter={(value) => [formatINR(value), 'Amount']}
+                      />
+                      <Legend />
+                      <Bar 
+                        dataKey="amount" 
+                        name="Income" 
+                        fill="#10b981" 
+                        radius={[0, 4, 4, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex justify-center items-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-600"></div>
+            </div>
+          )}
+        </div>
+
+        {/* Income Form Modal */}
+        {showForm && (
+          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-3 sm:p-4 z-50">
+            <div className="bg-white rounded-lg overflow-hidden shadow-xl transform transition-all w-full max-w-sm sm:max-w-md md:max-w-lg">
+              <div className="bg-white px-3 sm:px-4 pt-4 sm:pt-5 pb-3 sm:pb-4">
+                <div className="sm:flex sm:items-start">
+                  <div className="mt-2 sm:mt-0 sm:ml-4 w-full">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg leading-6 font-medium text-gray-900">
+                        {isEditing ? 'Edit Income' : 'Add New Income'}
+                      </h3>
+                      <button
+                        onClick={() => {
+                          setShowForm(false);
+                          setIsEditing(false);
+                          setCurrentIncome(null);
+                          reset();
+                        }}
+                        className="text-gray-400 hover:text-gray-500"
                       >
-                        {frequencies.map(freq => (
-                          <option key={freq.value} value={freq.value}>
-                            {freq.label}
-                          </option>
-                        ))}
-                      </select>
+                        <XMarkIcon className="h-6 w-6" />
+                      </button>
                     </div>
-                  )}
-                </div>
+                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <label htmlFor="title" className="form-label">
+                            Income Title
+                          </label>
+                          <input
+                            id="title"
+                            type="text"
+                            className="form-input"
+                            placeholder="e.g., Monthly Salary, Freelance Project"
+                            {...register('title', { required: 'Title is required' })}
+                          />
+                          {errors.title && (
+                            <p className="form-error">{errors.title.message}</p>
+                          )}
+                        </div>
 
-                <div>
-                  <label htmlFor="notes" className="form-label">
-                    Notes (optional)
-                  </label>
-                  <textarea
-                    id="notes"
-                    rows="3"
-                    className="form-input"
-                    placeholder="Add any additional details..."
-                    {...register('notes')}
-                  ></textarea>
+                        <div>
+                          <label htmlFor="amount" className="form-label">
+                            Amount (₹)
+                          </label>
+                          <input
+                            id="amount"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            className="form-input"
+                            placeholder="0.00"
+                            {...register('amount', {
+                              required: 'Amount is required',
+                              min: {
+                                value: 0,
+                                message: 'Amount must be positive'
+                              }
+                            })}
+                          />
+                          {errors.amount && (
+                            <p className="form-error">{errors.amount.message}</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <label htmlFor="category" className="form-label">
+                            Category
+                          </label>
+                          <select
+                            id="category"
+                            className="form-input"
+                            {...register('category', { required: 'Category is required' })}
+                          >
+                            <option value="">Select a category</option>
+                            {categories.map(category => (
+                              <option key={category} value={category}>
+                                {category}
+                              </option>
+                            ))}
+                          </select>
+                          {errors.category && (
+                            <p className="form-error">{errors.category.message}</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <label htmlFor="date" className="form-label">
+                            Date Received
+                          </label>
+                          <DatePicker
+                            selected={watch('date')}
+                            onChange={(date) => setValue('date', date)}
+                            className="form-input w-full"
+                            dateFormat="MMMM d, yyyy"
+                          />
+                        </div>
+
+                        <div>
+                          <div className="flex items-center mb-2">
+                            <input
+                              id="isRecurring"
+                              type="checkbox"
+                              className="form-checkbox h-4 w-4 text-primary-600"
+                              {...register('isRecurring')}
+                            />
+                            <label htmlFor="isRecurring" className="ml-2 form-label mb-0">
+                              Recurring Income
+                            </label>
+                          </div>
+                          
+                          {watch('isRecurring') && (
+                            <div>
+                              <label htmlFor="frequency" className="form-label">
+                                Frequency
+                              </label>
+                              <select
+                                id="frequency"
+                                className="form-input"
+                                {...register('frequency')}
+                              >
+                                {frequencies.map(freq => (
+                                  <option key={freq.value} value={freq.value}>
+                                    {freq.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+                        </div>
+
+                        <div>
+                          <label htmlFor="notes" className="form-label">
+                            Notes (optional)
+                          </label>
+                          <textarea
+                            id="notes"
+                            rows="3"
+                            className="form-input"
+                            placeholder="Add any additional details..."
+                            {...register('notes')}
+                          ></textarea>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end space-x-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowForm(false);
+                            setIsEditing(false);
+                            setCurrentIncome(null);
+                            reset();
+                          }}
+                          className="btn-outline"
+                        >
+                          Cancel
+                        </button>
+                        <button 
+                          type="submit" 
+                          className="btn-primary"
+                          disabled={submitting}
+                        >
+                          {submitting ? (
+                            <>
+                              <span className="inline-block animate-spin h-4 w-4 border-2 border-t-transparent border-white rounded-full mr-2"></span>
+                              Processing...
+                            </>
+                          ) : isEditing ? 'Update Income' : 'Add Income'}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
                 </div>
               </div>
-
-              <div className="flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowForm(false);
-                    setIsEditing(false);
-                    setCurrentIncome(null);
-                    reset();
-                  }}
-                  className="btn-outline"
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary">
-                  {isEditing ? 'Update Income' : 'Add Income'}
-                </button>
-              </div>
-            </form>
+            </div>
           </div>
         )}
 
@@ -672,14 +952,14 @@ const Income = () => {
           <div className="flex items-center mb-4 sm:mb-0">
             <h2 className="text-lg font-medium text-gray-900">Income Entries</h2>
             <div className="ml-2 bg-primary-100 text-primary-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-              Total: ${totalIncome}
+              Total: {formatINR(totalIncome)}
             </div>
           </div>
 
           <div className="flex items-center">
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="btn-outline flex items-center mr-2"
+              className="bg-[#2E8B57] text-white hover:bg-[#237249] font-medium rounded-lg px-4 py-2 flex items-center"
             >
               <FunnelIcon className="h-4 w-4 mr-1" />
               {Object.values(filters).some(v => v && v !== 'All') ? 'Filters Applied' : 'Filter'}
@@ -859,7 +1139,7 @@ const Income = () => {
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-green-600">
-                        ${parseFloat(income.amount).toFixed(2)}
+                        {formatINR(parseFloat(income.amount))}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end space-x-3">
@@ -883,23 +1163,7 @@ const Income = () => {
               </table>
             </div>
           ) : (
-            <div className="text-center py-12">
-              <BanknotesIcon className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No income records</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Get started by adding your first income.
-              </p>
-              <div className="mt-6">
-                <button
-                  type="button"
-                  onClick={() => setShowForm(true)}
-                  className="btn-primary"
-                >
-                  <PlusIcon className="h-5 w-5 mr-2" />
-                  Add Income
-                </button>
-              </div>
-            </div>
+            <EmptyState />
           )}
         </div>
       </motion.div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { PencilIcon, TrashIcon, CalendarIcon, TagIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline';
+import { formatINR } from '../utils/currency';
 
 const ExpenseTable = ({ expenses, onEdit, onDelete, loading }) => {
   if (loading) {
@@ -25,7 +26,7 @@ const ExpenseTable = ({ expenses, onEdit, onDelete, loading }) => {
     <div className="bg-[#F8F6F0] rounded-lg shadow-luxe p-4 mb-4">
       <div className="flex justify-between items-start mb-3">
         <h3 className="font-medium text-gray-900 truncate max-w-[200px]">{expense.title}</h3>
-        <span className="font-medium text-[#2E8B57]">₹{parseFloat(expense.amount).toFixed(2)}</span>
+        <span className="font-medium text-[#2E8B57]">{formatINR(parseFloat(expense.amount))}</span>
       </div>
       
       {expense.notes && (
@@ -110,8 +111,8 @@ const ExpenseTable = ({ expenses, onEdit, onDelete, loading }) => {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-[#A0A0A0]">
                   {format(new Date(expense.date), 'MMM dd, yyyy')}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-[#2E8B57]">
-                  ₹{parseFloat(expense.amount).toFixed(2)}
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-[#2E8B57]">
+                  {formatINR(parseFloat(expense.amount))}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div className="flex items-center justify-end space-x-3">

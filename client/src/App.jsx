@@ -17,7 +17,6 @@ import Budget from './pages/Budget';
 import Search from './pages/Search';
 import Reminders from './pages/Reminders';
 import Goals from './pages/Goals';
-import Currencies from './pages/Currencies';
 import Profile from './pages/Profile';
 import NotFound from './pages/NotFound';
 
@@ -99,15 +98,6 @@ function App() {
             element={
               <Layout>
                 <Goals />
-              </Layout>
-            } 
-          />
-          
-          <Route 
-            path="/currencies" 
-            element={
-              <Layout>
-                <Currencies />
               </Layout>
             } 
           />

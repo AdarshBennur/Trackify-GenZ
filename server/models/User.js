@@ -2,6 +2,16 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
+// Define the schema options
+const schemaOptions = {
+  collection: 'users', // Explicitly specify the collection name
+  strict: false, // Allow fields not defined in the schema
+  timestamps: false, // Don't add timestamps automatically
+  autoIndex: true, // Ensure indexes are created
+  autoCreate: true // Create the collection if it doesn't exist
+};
+
+// Define the User schema
 const UserSchema = new mongoose.Schema({
   username: {
     type: String,
@@ -9,6 +19,11 @@ const UserSchema = new mongoose.Schema({
     unique: true,
     trim: true,
     minlength: [3, 'Username must be at least 3 characters']
+  },
+  // Support both username and name fields for backward compatibility
+  name: {
+    type: String,
+    required: false
   },
   email: {
     type: String,
@@ -38,6 +53,23 @@ const UserSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   }
+}, schemaOptions);
+
+// Set a pre-save middleware to ensure username/name compatibility
+UserSchema.pre('save', async function(next) {
+  console.log(`Pre-save middleware for user: ${this.email}`.cyan);
+  
+  // If name is provided but username is not, use name as username
+  if (this.name && !this.username) {
+    this.username = this.name;
+  }
+  
+  // If username is provided but name is not, use username as name
+  if (this.username && !this.name) {
+    this.name = this.username;
+  }
+  
+  next();
 });
 
 // Hash password before saving
@@ -63,6 +95,11 @@ UserSchema.pre('save', async function(next) {
     console.error('Error hashing password:', error);
     next(error); // Pass the error to the next middleware
   }
+});
+
+// Log after successful save
+UserSchema.post('save', function(doc) {
+  console.log(`User ${doc.email} saved successfully with ID: ${doc._id}`.green);
 });
 
 // Sign JWT and return
@@ -97,6 +134,10 @@ UserSchema.methods.matchPassword = async function(enteredPassword) {
   }
 };
 
+// Create the model
 const User = mongoose.model('User', UserSchema);
+
+// Log the model creation
+console.log(`User model initialized with collection: ${User.collection.name}`.cyan);
 
 module.exports = User; 

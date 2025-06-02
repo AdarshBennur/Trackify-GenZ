@@ -56,7 +56,7 @@ const Navbar = () => {
                 <div className="flex flex-shrink-0 items-center">
                   <Link to="/" className="flex items-center">
                     <div className="h-8 w-8 bg-[#D4AF37] rounded-full flex items-center justify-center mr-2">
-                      <span className="text-white font-bold text-sm">$</span>
+                      <span className="text-white font-bold text-sm">₹</span>
                     </div>
                     <span className="text-xl font-bold text-[#2E8B57]">Trackify <span className="text-[#D4AF37]">GenZ</span></span>
                   </Link>

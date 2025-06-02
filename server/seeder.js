@@ -43,7 +43,7 @@ const createGuestData = async (userId) => {
       category: 'Food',
       date: new Date('2023-10-01'),
       notes: 'Monthly grocery shopping',
-      currency: { code: 'INR', symbol: '₹' },
+      currency: { code: 'USD', symbol: '$' },
       user: userId
     },
     {
@@ -52,7 +52,7 @@ const createGuestData = async (userId) => {
       category: 'Utilities',
       date: new Date('2023-10-05'),
       notes: 'Monthly electricity bill',
-      currency: { code: 'INR', symbol: '₹' },
+      currency: { code: 'USD', symbol: '$' },
       user: userId
     },
     {
@@ -60,7 +60,7 @@ const createGuestData = async (userId) => {
       amount: 1850,
       category: 'Entertainment',
       date: new Date('2023-10-10'),
-      currency: { code: 'INR', symbol: '₹' },
+      currency: { code: 'USD', symbol: '$' },
       user: userId
     },
     {
@@ -68,7 +68,7 @@ const createGuestData = async (userId) => {
       amount: 350,
       category: 'Transportation',
       date: new Date('2023-10-15'),
-      currency: { code: 'INR', symbol: '₹' },
+      currency: { code: 'USD', symbol: '$' },
       user: userId
     },
     {
@@ -76,7 +76,7 @@ const createGuestData = async (userId) => {
       amount: 800,
       category: 'Entertainment',
       date: new Date('2023-10-20'),
-      currency: { code: 'INR', symbol: '₹' },
+      currency: { code: 'USD', symbol: '$' },
       user: userId
     },
     {
@@ -84,7 +84,7 @@ const createGuestData = async (userId) => {
       amount: 999,
       category: 'Utilities',
       date: new Date('2023-10-12'),
-      currency: { code: 'INR', symbol: '₹' },
+      currency: { code: 'USD', symbol: '$' },
       user: userId
     },
     {
@@ -92,7 +92,7 @@ const createGuestData = async (userId) => {
       amount: 15000,
       category: 'Housing',
       date: new Date('2023-10-01'),
-      currency: { code: 'INR', symbol: '₹' },
+      currency: { code: 'USD', symbol: '$' },
       user: userId
     },
     {
@@ -100,7 +100,7 @@ const createGuestData = async (userId) => {
       amount: 2500,
       category: 'Healthcare',
       date: new Date('2023-10-05'),
-      currency: { code: 'INR', symbol: '₹' },
+      currency: { code: 'USD', symbol: '$' },
       user: userId
     }
   ];
@@ -113,7 +113,7 @@ const createGuestData = async (userId) => {
       category: 'Salary',
       date: new Date('2023-10-01'),
       notes: 'Monthly salary',
-      currency: { code: 'INR', symbol: '₹' },
+      currency: { code: 'USD', symbol: '$' },
       user: userId
     },
     {
@@ -122,7 +122,7 @@ const createGuestData = async (userId) => {
       category: 'Freelance',
       date: new Date('2023-10-15'),
       notes: 'Website development project',
-      currency: { code: 'INR', symbol: '₹' },
+      currency: { code: 'USD', symbol: '$' },
       user: userId
     },
     {
@@ -131,7 +131,7 @@ const createGuestData = async (userId) => {
       category: 'Investment',
       date: new Date('2023-10-20'),
       notes: 'Stock dividends',
-      currency: { code: 'INR', symbol: '₹' },
+      currency: { code: 'USD', symbol: '$' },
       user: userId
     }
   ];
@@ -142,7 +142,7 @@ const createGuestData = async (userId) => {
       category: 'Food',
       amount: 5000,
       period: 'monthly',
-      currency: { code: 'INR', symbol: '₹' },
+      currency: { code: 'USD', symbol: '$' },
       user: userId,
       startDate: new Date('2023-10-01')
     },
@@ -150,7 +150,7 @@ const createGuestData = async (userId) => {
       category: 'Utilities',
       amount: 3000,
       period: 'monthly',
-      currency: { code: 'INR', symbol: '₹' },
+      currency: { code: 'USD', symbol: '$' },
       user: userId,
       startDate: new Date('2023-10-01')
     },
@@ -158,7 +158,7 @@ const createGuestData = async (userId) => {
       category: 'Entertainment',
       amount: 3000,
       period: 'monthly',
-      currency: { code: 'INR', symbol: '₹' },
+      currency: { code: 'USD', symbol: '$' },
       user: userId,
       startDate: new Date('2023-10-01')
     },
@@ -166,7 +166,7 @@ const createGuestData = async (userId) => {
       category: 'Housing',
       amount: 15000,
       period: 'monthly',
-      currency: { code: 'INR', symbol: '₹' },
+      currency: { code: 'USD', symbol: '$' },
       user: userId,
       startDate: new Date('2023-10-01')
     },
@@ -174,7 +174,7 @@ const createGuestData = async (userId) => {
       category: 'Transportation',
       amount: 2000,
       period: 'monthly',
-      currency: { code: 'INR', symbol: '₹' },
+      currency: { code: 'USD', symbol: '$' },
       user: userId,
       startDate: new Date('2023-10-01')
     }
@@ -223,7 +223,7 @@ const importData = async () => {
         category: 'Food',
         date: new Date('2023-10-01'),
         notes: 'Weekly grocery shopping',
-        currency: { code: 'INR', symbol: '₹' },
+        currency: { code: 'USD', symbol: '$' },
         user: regularUserId
       },
       {
@@ -232,7 +232,7 @@ const importData = async () => {
         category: 'Utilities',
         date: new Date('2023-10-05'),
         notes: 'Monthly electricity bill',
-        currency: { code: 'INR', symbol: '₹' },
+        currency: { code: 'USD', symbol: '$' },
         user: regularUserId
       },
       {
@@ -240,7 +240,7 @@ const importData = async () => {
         amount: 65.30,
         category: 'Entertainment',
         date: new Date('2023-10-10'),
-        currency: { code: 'INR', symbol: '₹' },
+        currency: { code: 'USD', symbol: '$' },
         user: regularUserId
       },
       {
@@ -248,7 +248,7 @@ const importData = async () => {
         amount: 25.00,
         category: 'Transportation',
         date: new Date('2023-10-15'),
-        currency: { code: 'INR', symbol: '₹' },
+        currency: { code: 'USD', symbol: '$' },
         user: regularUserId
       }
     ];
@@ -256,7 +256,7 @@ const importData = async () => {
     await Expense.insertMany(expenses);
     console.log(`${expenses.length} expenses created...`.green.inverse);
 
-    // Create incomes
+    // Create incomes for regular user
     const incomes = [
       {
         title: 'Salary',
@@ -264,7 +264,7 @@ const importData = async () => {
         category: 'Salary',
         date: new Date('2023-10-01'),
         notes: 'Monthly salary',
-        currency: { code: 'INR', symbol: '₹' },
+        currency: { code: 'USD', symbol: '$' },
         user: regularUserId
       },
       {
@@ -273,7 +273,7 @@ const importData = async () => {
         category: 'Freelance',
         date: new Date('2023-10-15'),
         notes: 'Website development project',
-        currency: { code: 'INR', symbol: '₹' },
+        currency: { code: 'USD', symbol: '$' },
         user: regularUserId
       }
     ];
@@ -281,27 +281,27 @@ const importData = async () => {
     await Income.insertMany(incomes);
     console.log(`${incomes.length} incomes created...`.green.inverse);
 
-    // Create budgets
+    // Create budgets for regular user
     const budgets = [
       {
         category: 'Food',
         amount: 500.00,
         period: 'monthly',
-        currency: { code: 'INR', symbol: '₹' },
+        currency: { code: 'USD', symbol: '$' },
         user: regularUserId
       },
       {
         category: 'Utilities',
         amount: 200.00,
         period: 'monthly',
-        currency: { code: 'INR', symbol: '₹' },
+        currency: { code: 'USD', symbol: '$' },
         user: regularUserId
       },
       {
         category: 'Entertainment',
         amount: 300.00,
         period: 'monthly',
-        currency: { code: 'INR', symbol: '₹' },
+        currency: { code: 'USD', symbol: '$' },
         user: regularUserId
       }
     ];

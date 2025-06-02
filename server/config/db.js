@@ -1,84 +1,90 @@
 const mongoose = require('mongoose');
 const colors = require('colors');
 
+// Track connection status
+let isConnected = false;
+
 const connectDB = async () => {
   try {
-    // Get the connection string from environment or use fallback
-    const connectionString = process.env.MONGO_URI;
-    
-    if (!connectionString) {
-      console.error('MONGO_URI is not defined in environment variables'.red.bold);
-      throw new Error('MongoDB connection string is missing. Please check your .env file.');
+    // If already connected, reuse the connection
+    if (mongoose.connection.readyState === 1) {
+      console.log('Using existing MongoDB connection'.cyan);
+      isConnected = true;
+      return mongoose.connection;
     }
     
-    console.log('Attempting to connect to MongoDB...'.yellow);
-    console.log(`Connection string: ${connectionString}`.yellow);
-    
-    // Set up connection options
+    // Get the connection string and handle potential line breaks
+    let mongoURI = process.env.MONGO_URI;
+    if (mongoURI) {
+      // Remove any line breaks that might be in the connection string
+      mongoURI = mongoURI.replace(/\n/g, '').replace(/\r/g, '');
+      console.log('Using MongoDB connection string (sensitive parts masked):'.cyan);
+      console.log(mongoURI.replace(/:[^:]*@/, ':****@').substring(0, 50) + '...'.cyan);
+    }
+
+    // Set connection options for better reliability
     const options = {
       useNewUrlParser: true,
       useUnifiedTopology: true,
-      serverSelectionTimeoutMS: 10000, // Timeout after 10s
-      connectTimeoutMS: 10000,         // Give up initial connection after 10s
-      socketTimeoutMS: 45000,          // Close sockets after 45s of inactivity
+      serverSelectionTimeoutMS: 10000, // Timeout for server selection
+      socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+      family: 4 // Use IPv4, skip trying IPv6
     };
+
+    const conn = await mongoose.connect(mongoURI, options);
+
+    console.log(`MongoDB Connected: ${conn.connection.host}`.cyan.underline.bold);
     
-    // Connect with options
-    const conn = await mongoose.connect(connectionString, options);
+    // Log the database name
+    console.log(`Database: ${conn.connection.db.databaseName}`.yellow);
     
-    console.log(`MongoDB Connected: ${conn.connection.host}`.cyan.bold);
-    console.log(`Database Name: ${conn.connection.name}`.cyan);
-    
-    // Verify the connection by making a test query
-    try {
-      // Try to find any document to verify connection is working
-      const dbList = await mongoose.connection.db.admin().listDatabases();
-      console.log(`Available databases: ${dbList.databases.map(db => db.name).join(', ')}`.cyan);
-    } catch (testError) {
-      console.warn(`Could not verify connection with a test query: ${testError.message}`.yellow);
-    }
-    
-    // Set up event handlers to track connection status
-    mongoose.connection.on('error', err => {
-      console.error(`MongoDB connection error: ${err.message}`.red.bold);
-      console.error(err.stack);
-    });
-    
+    // Set up connection event handlers
     mongoose.connection.on('disconnected', () => {
       console.log('MongoDB disconnected'.yellow.bold);
+      isConnected = false;
     });
-    
-    mongoose.connection.on('reconnected', () => {
-      console.log('MongoDB reconnected'.green.bold);
+
+    mongoose.connection.on('error', (err) => {
+      console.error('MongoDB connection error:'.red.bold, err);
+      isConnected = false;
     });
-    
-    // Handle app termination to close the connection
-    process.on('SIGINT', async () => {
+
+    // Set up automatic reconnection
+    mongoose.connection.on('disconnected', async () => {
+      console.log('Attempting to reconnect to MongoDB...'.yellow);
       try {
-        await mongoose.connection.close();
-        console.log('MongoDB connection closed due to app termination'.yellow);
-        process.exit(0);
+        await mongoose.connect(mongoURI, options);
+        console.log('Reconnected to MongoDB successfully'.green);
+        isConnected = true;
       } catch (err) {
-        console.error('Error closing MongoDB connection:'.red, err);
-        process.exit(1);
+        console.error('Failed to reconnect:'.red, err);
       }
     });
     
+    // Return the connection
+    isConnected = true;
     return conn;
-  } catch (error) {
-    console.error(`MongoDB connection error: ${error.message}`.red.bold);
-    console.error('Error Details:'.red, error);
+  } catch (err) {
+    console.error(`MongoDB Connection Error: ${err.message}`.red.bold);
     
-    // Check for common MongoDB connection errors and provide more helpful messages
-    if (error.name === 'MongoNetworkError') {
-      console.error('Network error connecting to MongoDB. Is MongoDB running?'.red);
-    } else if (error.name === 'MongoServerSelectionError') {
-      console.error('Could not select a MongoDB server. Check your connection string and network.'.red);
+    // More detailed error diagnostics
+    if (err.name === 'MongoParseError') {
+      console.error('Invalid MongoDB connection string. Please check your .env file'.red);
+    } else if (err.name === 'MongoServerSelectionError') {
+      console.error('Could not connect to MongoDB server. Check network or credentials'.red);
     }
     
-    // Don't exit the process, let the app decide how to handle it
-    throw new Error(`Failed to connect to MongoDB: ${error.message}`);
+    // Don't exit the process, let the caller handle it
+    throw err;
   }
 };
 
-module.exports = connectDB; 
+// Function to check if database is connected
+const isDbConnected = () => {
+  return isConnected && mongoose.connection.readyState === 1;
+};
+
+module.exports = {
+  connectDB,
+  isDbConnected
+}; 

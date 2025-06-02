@@ -63,7 +63,6 @@ const Sidebar = () => {
     { name: 'Budget', href: '/budget', icon: DocumentChartBarIcon },
     { name: 'Goals', href: '/goals', icon: FlagIcon },
     { name: 'Reminders', href: '/reminders', icon: BellIcon },
-    { name: 'Currencies', href: '/currencies', icon: CurrencyYenIcon },
     { name: 'Search', href: '/search', icon: MagnifyingGlassIcon },
   ];
 
@@ -112,7 +111,7 @@ const Sidebar = () => {
         <div className="h-16 flex items-center px-6 border-b border-[#F4F1EB]">
           <Link to="/" className="flex items-center">
             <div className="h-8 w-8 bg-[#D4AF37] rounded-full flex items-center justify-center mr-2">
-              <span className="text-white font-bold text-sm">$</span>
+              <span className="text-white font-bold text-sm">₹</span>
             </div>
             <span className="text-xl font-bold text-[#2E8B57]">Trackify <span className="text-[#D4AF37]">GenZ</span></span>
           </Link>

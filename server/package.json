@@ -8,7 +8,9 @@
     "dev": "nodemon server.js",
     "seed": "node seeder.js",
     "destroy-data": "node seeder.js -d",
-    "verify-env": "node verifyEnv.js"
+    "verify-env": "node verifyEnv.js",
+    "check-db": "node checkMongoDB.js",
+    "test-register": "node testRegistration.js"
   },
   "keywords": [
     "expense",

@@ -33,11 +33,11 @@ const BudgetSchema = new mongoose.Schema({
   currency: {
     code: {
       type: String,
-      default: 'INR'
+      default: 'USD'
     },
     symbol: {
       type: String,
-      default: '₹'
+      default: '$'
     }
   },
   user: {

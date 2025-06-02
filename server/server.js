@@ -3,7 +3,7 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
-const connectDB = require('./config/db');
+const { connectDB, isDbConnected } = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
 const path = require('path');
 const colors = require('colors');
@@ -23,6 +23,16 @@ if (process.env.MONGO_URI) {
 // Import route files
 const authRoutes = require('./routes/authRoutes');
 const expenseRoutes = require('./routes/expenseRoutes');
+const currencyRoutes = require('./routes/currencyRoutes');
+const incomeRoutes = require('./routes/incomeRoutes');
+const budgetRoutes = require('./routes/budgetRoutes');
+const goalRoutes = require('./routes/goalRoutes');
+const reminderRoutes = require('./routes/reminderRoutes');
+const userRoutes = require('./routes/userRoutes');
+
+// Import setupCollections
+const setupCollections = require('./setupCollections');
+const initCurrencies = require('./initCurrencies');
 
 // Initialize express app
 const app = express();
@@ -66,20 +76,61 @@ if (process.env.NODE_ENV === 'development') {
 (async function() {
   try {
     console.log('Connecting to MongoDB...'.cyan);
+    
+    // Extract database name from URI for logging
+    const dbName = process.env.MONGO_URI?.includes('/expensetracker') 
+      ? 'expensetracker' 
+      : (process.env.MONGO_URI?.match(/\/([^/?]+)(\?|$)/) || [])[1] || 'unknown';
+    
+    console.log(`Target MongoDB database: ${dbName}`.cyan);
+    
+    // Connect to database
     const conn = await connectDB();
     console.log('Database connection established'.green.bold);
     
-    // Print database stats
-    try {
-      const stats = await mongoose.connection.db.stats();
-      console.log(`MongoDB stats: ${stats.collections} collections, ${stats.objects} documents`.cyan);
-    } catch (statsError) {
-      console.warn(`Could not retrieve database stats: ${statsError.message}`.yellow);
+    // Only run setup if connected successfully
+    if (isDbConnected()) {
+      try {
+        // Setup collections
+        console.log('Setting up database collections...'.yellow);
+        await setupCollections();
+        
+        // Initialize currencies
+        await initCurrencies();
+        
+        // Print database stats
+        const stats = await mongoose.connection.db.stats();
+        console.log(`MongoDB stats: ${stats.collections} collections, ${stats.objects} documents`.cyan);
+        
+        // Verify User collection exists
+        const collections = await mongoose.connection.db.listCollections().toArray();
+        const userCollectionExists = collections.some(collection => collection.name === 'users');
+        
+        if (userCollectionExists) {
+          console.log('Users collection found in database'.green);
+          // Count users for verification
+          const userCount = await mongoose.connection.db.collection('users').countDocuments();
+          console.log(`Current user count in database: ${userCount}`.cyan);
+        } else {
+          console.log('Users collection not found in database. It will be created on first user registration.'.yellow);
+        }
+      } catch (setupError) {
+        console.warn(`Setup error: ${setupError.message}`.yellow);
+        console.log('Continuing server startup despite setup errors'.yellow);
+      }
+    } else {
+      console.warn('Database not fully connected, skipping database setup'.yellow);
     }
 
     // Mount routes
     app.use('/api/auth', authRoutes);
     app.use('/api/expenses', expenseRoutes);
+    app.use('/api/currencies', currencyRoutes);
+    app.use('/api/incomes', incomeRoutes);
+    app.use('/api/budgets', budgetRoutes);
+    app.use('/api/goals', goalRoutes);
+    app.use('/api/reminders', reminderRoutes);
+    app.use('/api/users', userRoutes);
 
     // Define port
     const PORT = process.env.PORT || 5001;
@@ -105,7 +156,7 @@ app.get('/api/health', (req, res) => {
     status: 'success',
     message: 'API is running',
     env: process.env.NODE_ENV,
-    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    database: isDbConnected() ? 'connected' : 'disconnected',
     timestamp: new Date()
   });
 });

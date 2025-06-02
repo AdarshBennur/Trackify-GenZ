@@ -48,6 +48,26 @@ api.interceptors.response.use(
         ? error.response.data.message
         : error.message;
     
+    // Get the request URL to check specific endpoints
+    const requestUrl = error.config?.url || '';
+    
+    // List of silent endpoints that shouldn't trigger toast errors automatically
+    // These endpoints handle their errors gracefully in the component
+    const silentEndpoints = [
+      '/incomes/stats',
+      'stats',
+      'categories'
+    ];
+    
+    // Check if the current endpoint is in the silent list
+    const isSilentEndpoint = silentEndpoints.some(endpoint => requestUrl.includes(endpoint));
+    
+    // If this is a silent endpoint, just log the error without showing a toast
+    if (isSilentEndpoint) {
+      console.log(`Silent error handling for ${requestUrl}:`, errorMsg);
+      return Promise.reject(error);
+    }
+    
     // Handle specific status codes
     switch (status) {
       case 401: // Unauthorized (authentication issues)

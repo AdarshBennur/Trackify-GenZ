@@ -17,11 +17,14 @@ const IncomeSchema = new mongoose.Schema({
     required: [true, 'Please add a category'],
     enum: [
       'Salary',
-      'Freelance',
-      'Investment',
-      'Rental',
       'Business',
+      'Freelance',
+      'Investments',
+      'Dividends',
+      'Rental',
+      'Interest',
       'Gift',
+      'Refund',
       'Other'
     ]
   },
@@ -33,14 +36,27 @@ const IncomeSchema = new mongoose.Schema({
     type: String,
     maxlength: [500, 'Notes cannot be more than 500 characters']
   },
+  isRecurring: {
+    type: Boolean,
+    default: false
+  },
+  frequency: {
+    type: String,
+    default: 'one-time',
+    enum: ['one-time', 'weekly', 'bi-weekly', 'monthly', 'quarterly', 'annually']
+  },
   currency: {
     code: {
       type: String,
-      default: 'INR'
+      default: 'USD'
     },
     symbol: {
       type: String,
-      default: '₹'
+      default: '$'
+    },
+    rate: {
+      type: Number,
+      default: 1
     }
   },
   user: {
@@ -59,7 +75,12 @@ const IncomeSchema = new mongoose.Schema({
 
 // Calculate amountInBaseCurrency before saving
 IncomeSchema.pre('save', function(next) {
-  this.amountInBaseCurrency = this.amount * this.currency.rate;
+  // Only calculate if rate exists, otherwise default to amount
+  if (this.currency && this.currency.rate) {
+    this.amountInBaseCurrency = this.amount * this.currency.rate;
+  } else {
+    this.amountInBaseCurrency = this.amount;
+  }
   next();
 });
 

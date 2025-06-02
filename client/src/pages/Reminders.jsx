@@ -199,7 +199,7 @@ const Reminders = () => {
             {!isEditing && (
               <button
                 onClick={() => setShowForm(!showForm)}
-                className="btn-primary flex items-center"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md hover:shadow-lg font-medium rounded-lg px-6 py-2.5 flex items-center transition-all duration-300"
               >
                 {showForm ? (
                   <>

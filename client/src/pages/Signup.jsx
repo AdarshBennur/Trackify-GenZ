@@ -15,7 +15,7 @@ const Signup = () => {
         >
           <Link to="/" className="flex items-center">
             <div className="h-12 w-12 bg-[#D4AF37] rounded-full flex items-center justify-center overflow-hidden mr-3">
-              <span className="text-white font-bold text-xl">$</span>
+              <span className="text-white font-bold text-xl">₹</span>
               <div className="w-5 h-1 bg-white rounded-full mt-1"></div>
             </div>
             <span className="text-xl font-bold text-[#2E8B57]">Trackify <span className="text-[#D4AF37]">GenZ</span></span>

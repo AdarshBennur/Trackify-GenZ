@@ -10,6 +10,8 @@
     "chart.js": "^4.4.0",
     "date-fns": "^2.30.0",
     "framer-motion": "^10.16.4",
+    "jspdf": "^3.0.1",
+    "jspdf-autotable": "^5.0.2",
     "react": "^18.2.0",
     "react-chartjs-2": "^5.2.0",
     "react-datepicker": "^4.16.0",

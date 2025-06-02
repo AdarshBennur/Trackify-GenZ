@@ -3,13 +3,27 @@ const asyncHandler = require('express-async-handler');
 const { validationResult } = require('express-validator');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
+const colors = require('colors');
 
 // @desc    Register user
 // @route   POST /api/auth/register
 // @access  Public
 exports.register = asyncHandler(async (req, res) => {
-  console.log('Registration process started');
-  console.log('Request body:', JSON.stringify(req.body, null, 2));
+  console.log('=== Registration process started ==='.cyan.bold);
+  console.log('Request body:', JSON.stringify({ ...req.body, password: '[HIDDEN]' }, null, 2));
+  
+  // Check MongoDB connection status and details
+  console.log(`MongoDB connection state: ${mongoose.connection.readyState === 1 ? 'Connected' : 'Not connected'}`.yellow);
+  console.log(`Database name: ${mongoose.connection.name}`.yellow);
+  
+  if (mongoose.connection.readyState !== 1) {
+    console.error('MongoDB not connected. Current state:', mongoose.connection.readyState);
+    return res.status(500).json({
+      success: false,
+      message: 'Database connection error. Please try again later.'
+    });
+  }
   
   // Check for validation errors
   const errors = validationResult(req);
@@ -25,7 +39,7 @@ exports.register = asyncHandler(async (req, res) => {
     const { username, email, password } = req.body;
 
     // Log registration attempt for debugging
-    console.log(`Registration attempt for email: ${email}, username: ${username}`);
+    console.log(`Registration attempt for email: ${email}, username: ${username}`.yellow);
 
     // Check if all required fields are provided
     if (!username || !email || !password) {
@@ -37,6 +51,7 @@ exports.register = asyncHandler(async (req, res) => {
     }
 
     // Check if user with this email exists
+    console.log('Checking if email already exists...'.yellow);
     const userExists = await User.findOne({ email });
     if (userExists) {
       console.log(`User with email ${email} already exists`);
@@ -47,6 +62,7 @@ exports.register = asyncHandler(async (req, res) => {
     }
 
     // Check username uniqueness
+    console.log('Checking if username already exists...'.yellow);
     const usernameExists = await User.findOne({ username });
     if (usernameExists) {
       console.log(`Username ${username} is already taken`);
@@ -60,32 +76,101 @@ exports.register = asyncHandler(async (req, res) => {
     console.log('Creating new user with details:', { username, email, role: 'user' });
     
     try {
-      const user = await User.create({
+      // Create user document directly using the mongoose model
+      const user = new User({
         username,
         email,
         password,
         role: 'user' // Ensure role is set to 'user' for regular registered users
       });
-
-      console.log('User created with ID:', user._id);
       
-      if (user) {
-        console.log(`User registered successfully: ${email}`);
-        // Generate JWT token and send response
-        sendTokenResponse(user, 201, res);
-      } else {
-        console.log('Failed to create user - user object is null');
-        return res.status(400).json({
+      // Save to MongoDB
+      console.log('Saving user to MongoDB...'.cyan);
+      const savedUser = await user.save();
+      
+      if (!savedUser || !savedUser._id) {
+        console.error('User save operation did not return a valid user document'.red);
+        return res.status(500).json({
           success: false,
-          message: 'Invalid user data'
+          message: 'Failed to save user to database'
         });
       }
+      
+      console.log('User saved to MongoDB with ID:', savedUser._id);
+
+      // Double check the user was saved by querying it directly from MongoDB
+      const verifyUser = await User.findById(savedUser._id);
+      
+      if (!verifyUser) {
+        console.error('CRITICAL ERROR: User not found in database after save'.red.bold);
+        // Try direct MongoDB collection access as a fallback
+        const directDbCheck = await mongoose.connection.db.collection('users').findOne({ _id: savedUser._id });
+        
+        if (directDbCheck) {
+          console.log('User found directly in MongoDB collection but not through Mongoose'.yellow);
+        } else {
+          console.error('User not found in MongoDB collection after save - registration FAILED'.red.bold);
+          return res.status(500).json({
+            success: false,
+            message: 'User registration failed. Please try again.'
+          });
+        }
+      } else {
+        console.log('User successfully verified in MongoDB'.green);
+      }
+
+      // Generate JWT token and send response
+      console.log(`User registered successfully: ${email}`.green);
+      sendTokenResponse(savedUser, 201, res);
+      
     } catch (createError) {
-      console.error('Error creating user document:', createError);
-      throw createError; // Rethrow to be caught by the outer catch block
+      console.error('Error creating user document:'.red, createError);
+      
+      // Try direct MongoDB insertion as a fallback if Mongoose fails
+      if (createError.name === 'MongooseError' || createError.name === 'ValidationError') {
+        console.log('Attempting direct MongoDB insertion as fallback...'.yellow);
+        try {
+          // Create a user document manually
+          const hashedPassword = await bcrypt.hash(password, 10);
+          const userDoc = {
+            username,
+            name: username, // For backward compatibility
+            email,
+            password: hashedPassword,
+            role: 'user',
+            createdAt: new Date()
+          };
+          
+          const result = await mongoose.connection.db.collection('users').insertOne(userDoc);
+          
+          if (result.acknowledged && result.insertedId) {
+            console.log('User inserted directly into MongoDB with ID:', result.insertedId);
+            
+            // Convert to Mongoose document for token generation
+            const insertedUser = await User.findById(result.insertedId);
+            if (insertedUser) {
+              console.log('Successfully retrieved inserted user for token generation'.green);
+              sendTokenResponse(insertedUser, 201, res);
+              return;
+            } else {
+              console.log('Direct insertion succeeded but could not retrieve user for authentication'.yellow);
+              // Continue to error response
+            }
+          }
+        } catch (directInsertError) {
+          console.error('Direct MongoDB insertion also failed:'.red, directInsertError);
+          // Continue to error response
+        }
+      }
+      
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to register user. Please try again.',
+        error: process.env.NODE_ENV === 'development' ? createError.message : undefined
+      });
     }
   } catch (error) {
-    console.error('Error in registration process:', error);
+    console.error('Error in registration process:'.red, error);
     
     // Check for MongoDB connection errors
     if (error.name === 'MongooseServerSelectionError') {
@@ -168,6 +253,24 @@ exports.login = asyncHandler(async (req, res) => {
   }
 
   try {
+    // Ensure database connection
+    if (mongoose.connection.readyState !== 1) {
+      console.log('MongoDB not connected, attempting to reconnect...');
+      try {
+        await mongoose.connect(process.env.MONGO_URI.replace(/\n/g, '').replace(/\r/g, ''), {
+          useNewUrlParser: true,
+          useUnifiedTopology: true,
+        });
+        console.log('Reconnected to MongoDB successfully');
+      } catch (connectError) {
+        console.error('Failed to reconnect to MongoDB:', connectError);
+        return res.status(500).json({
+          success: false,
+          message: 'Database connection error. Please try again later.'
+        });
+      }
+    }
+    
     // Check for user
     console.log(`Attempting to find user with email: ${email}`);
     // select('+password') is needed because password field has select: false by default

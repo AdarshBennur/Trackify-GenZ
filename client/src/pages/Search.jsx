@@ -161,7 +161,7 @@ const Search = () => {
               <div className="flex-none">
                 <button 
                   type="submit" 
-                  className="btn-primary h-full py-3 px-6 w-full md:w-auto"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md hover:shadow-lg font-medium rounded-lg h-full py-3 px-6 w-full md:w-auto transition-all duration-300"
                   disabled={loading}
                 >
                   {loading ? 'Searching...' : 'Search'}
@@ -255,13 +255,13 @@ const Search = () => {
                 <button
                   type="button"
                   onClick={handleResetFilters}
-                  className="btn-outline"
+                  className="bg-white text-emerald-600 border border-emerald-600 hover:bg-emerald-50 font-medium rounded-lg px-6 py-2.5 transition-all duration-300"
                 >
                   Clear Filters
                 </button>
                 <button
                   type="submit"
-                  className="btn-primary"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md hover:shadow-lg font-medium rounded-lg px-6 py-2.5 transition-all duration-300"
                   disabled={loading}
                 >
                   Apply Filters
@@ -276,7 +276,12 @@ const Search = () => {
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold text-gray-900">Search Results</h2>
             {searchPerformed && expenses.length > 0 && (
-              <ExportButton filters={filters} className="btn-outline text-sm" />
+              <ExportButton 
+                data={expenses} 
+                filters={filters} 
+                filename="search-results" 
+                className="btn-outline text-sm" 
+              />
             )}
           </div>
           

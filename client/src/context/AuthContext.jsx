@@ -144,31 +144,59 @@ export const AuthProvider = ({ children }) => {
       // Try /auth/register endpoint first, fallback to /auth/signup if needed
       let res;
       try {
+        // Add more detailed logging
+        console.log('Sending registration request to /auth/register endpoint...');
         res = await api.post('/auth/register', formData);
+        console.log('Registration successful with /auth/register endpoint');
       } catch (err) {
         console.log('Registration at /auth/register failed, trying /auth/signup');
+        console.log('Error details:', err.response?.data || err.message);
+        
+        // Try the alternative endpoint
         res = await api.post('/auth/signup', formData);
+        console.log('Registration successful with /auth/signup endpoint');
       }
       
-      console.log('Registration successful');
+      console.log('Registration successful, user created in MongoDB');
       
+      // Log the returned data (without sensitive info)
+      console.log('Server response:', { 
+        success: res.data.success,
+        user: res.data.user,
+        token: res.data.token ? '[TOKEN EXISTS]' : '[NO TOKEN]'
+      });
+      
+      // Update auth state
       dispatch({
         type: 'REGISTER_SUCCESS',
         payload: res.data.user
       });
       
+      // Store the token for authenticated requests
       setAuthToken(res.data.token);
+      
       return res.data;
     } catch (err) {
+      // Handle MongoDB connection errors or other server issues
       const errorMessage = err.response?.data?.message || 
                           err.response?.data?.errors?.[0]?.msg || 
                           'Registration failed';
       
       console.error('Registration error:', errorMessage);
       
+      // Provide more specific error messages based on the server response
+      let displayError = errorMessage;
+      
+      if (err.response?.status === 500) {
+        displayError = 'Server error. Please try again later.';
+        if (err.response?.data?.message?.includes('Database connection')) {
+          displayError = 'Database connection error. Please try again later.';
+        }
+      }
+      
       dispatch({
         type: 'REGISTER_FAIL',
-        payload: errorMessage
+        payload: displayError
       });
       
       throw err;
@@ -186,6 +214,7 @@ export const AuthProvider = ({ children }) => {
       });
       
       setAuthToken(res.data.token);
+      
       return res.data;
     } catch (err) {
       const errorMessage = err.response?.data?.message || 
@@ -217,6 +246,11 @@ export const AuthProvider = ({ children }) => {
     
     setAuthToken(null);
     dispatch({ type: 'LOGOUT' });
+  };
+
+  // Check if user is guest
+  const isGuestUser = () => {
+    return state.user && (state.user.role === 'guest' || state.user.email === 'guest@demo.com');
   };
 
   // Clear errors
@@ -253,10 +287,10 @@ export const AuthProvider = ({ children }) => {
         error: state.error,
         register,
         login,
-        loginAsGuest,
         logout,
         clearError,
-        loadUser
+        loginAsGuest,
+        isGuestUser
       }}
     >
       {children}
@@ -264,10 +298,10 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-// Custom hook to use auth context
+// Custom hook for using auth context
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
