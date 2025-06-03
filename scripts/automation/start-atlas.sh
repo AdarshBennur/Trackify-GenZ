@@ -49,7 +49,8 @@ docker-compose down
 
 # Start with Atlas-specific configuration (no local MongoDB)
 echo "▶️  Starting services with MongoDB Atlas..."
-docker-compose -f docker-compose.yml -f docker-compose.atlas.yml up --build
+echo "🚀 Starting Expense Tracker with MongoDB Atlas..."
+docker-compose -f ../../docker/docker-compose.yml -f ../../docker/docker-compose.atlas.yml up --build
 
 echo ""
 echo "🎉 Application started successfully!"

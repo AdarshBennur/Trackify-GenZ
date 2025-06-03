@@ -32,11 +32,11 @@ print_error() {
 
 # Check if .env file exists
 check_env_file() {
-    if [ ! -f .env ]; then
+    if [ ! -f ../../.env ]; then
         print_warning ".env file not found!"
-        if [ -f env.template ]; then
+        if [ -f ../../env.template ]; then
             print_status "Copying env.template to .env..."
-            cp env.template .env
+            cp ../../env.template ../../.env
             print_success ".env file created from template"
             print_warning "Please review and update the .env file with your specific values"
         else
@@ -50,14 +50,14 @@ check_env_file() {
 dev_build() {
     print_status "Building development containers..."
     check_env_file
-    docker-compose build
+    docker-compose -f ../../docker/docker-compose.yml build
     print_success "Development build completed"
 }
 
 dev_up() {
     print_status "Starting development environment..."
     check_env_file
-    docker-compose up -d
+    docker-compose -f ../../docker/docker-compose.yml up -d
     print_success "Development environment started"
     echo ""
     print_status "Services:"
@@ -70,18 +70,18 @@ dev_up() {
 dev_up_build() {
     print_status "Building and starting development environment..."
     check_env_file
-    docker-compose up --build -d
+    docker-compose -f ../../docker/docker-compose.yml up --build -d
     print_success "Development environment built and started"
 }
 
 dev_logs() {
     print_status "Showing development logs..."
-    docker-compose logs -f
+    docker-compose -f ../../docker/docker-compose.yml logs -f
 }
 
 dev_down() {
     print_status "Stopping development environment..."
-    docker-compose down
+    docker-compose -f ../../docker/docker-compose.yml down
     print_success "Development environment stopped"
 }
 
@@ -91,7 +91,7 @@ dev_clean() {
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         print_status "Cleaning up development environment..."
-        docker-compose down -v --remove-orphans
+        docker-compose -f ../../docker/docker-compose.yml down -v --remove-orphans
         docker system prune -f
         print_success "Development environment cleaned"
     else
@@ -101,29 +101,24 @@ dev_clean() {
 
 # Production commands
 prod_build() {
-    print_status "Building production containers..."
-    check_env_file
-    docker-compose -f docker-compose.prod.yml build
-    print_success "Production build completed"
+    echo "🏭 Building production containers..."
+    docker-compose -f ../../docker/docker-compose.prod.yml build
 }
 
 prod_up() {
-    print_status "Starting production environment..."
-    check_env_file
-    docker-compose -f docker-compose.prod.yml up -d
-    print_success "Production environment started"
+    echo "🚀 Starting production environment..."
+    docker-compose -f ../../docker/docker-compose.prod.yml up -d
 }
 
 prod_down() {
-    print_status "Stopping production environment..."
-    docker-compose -f docker-compose.prod.yml down
-    print_success "Production environment stopped"
+    echo "🛑 Stopping production environment..."
+    docker-compose -f ../../docker/docker-compose.prod.yml down
 }
 
 # Utility commands
 show_status() {
     print_status "Container status:"
-    docker-compose ps
+    docker-compose -f ../../docker/docker-compose.yml ps
     echo ""
     print_status "Resource usage:"
     docker stats --no-stream
@@ -133,10 +128,10 @@ show_logs() {
     SERVICE=${1:-}
     if [ -z "$SERVICE" ]; then
         print_status "Showing logs for all services..."
-        docker-compose logs -f
+        docker-compose -f ../../docker/docker-compose.yml logs -f
     else
         print_status "Showing logs for $SERVICE..."
-        docker-compose logs -f "$SERVICE"
+        docker-compose -f ../../docker/docker-compose.yml logs -f "$SERVICE"
     fi
 }
 
@@ -147,20 +142,20 @@ restart_service() {
         exit 1
     fi
     print_status "Restarting $SERVICE..."
-    docker-compose restart "$SERVICE"
+    docker-compose -f ../../docker/docker-compose.yml restart "$SERVICE"
     print_success "$SERVICE restarted"
 }
 
 # Database operations
 db_backup() {
-    BACKUP_DIR="./backups"
+    BACKUP_DIR="../../backups"
     TIMESTAMP=$(date +%Y%m%d_%H%M%S)
     BACKUP_FILE="$BACKUP_DIR/mongo_backup_$TIMESTAMP.gz"
     
     mkdir -p "$BACKUP_DIR"
     
     print_status "Creating database backup..."
-    docker-compose exec mongo mongodump --authenticationDatabase admin -u admin -p SecurePassword123! --db expensetracker --archive | gzip > "$BACKUP_FILE"
+    docker-compose -f ../../docker/docker-compose.yml exec mongo mongodump --authenticationDatabase admin -u admin -p SecurePassword123! --db expensetracker --archive | gzip > "$BACKUP_FILE"
     print_success "Database backup created: $BACKUP_FILE"
 }
 
@@ -176,7 +171,7 @@ db_restore() {
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         print_status "Restoring database..."
-        gunzip -c "$BACKUP_FILE" | docker-compose exec -T mongo mongorestore --authenticationDatabase admin -u admin -p SecurePassword123! --archive
+        gunzip -c "$BACKUP_FILE" | docker-compose -f ../../docker/docker-compose.yml exec -T mongo mongorestore --authenticationDatabase admin -u admin -p SecurePassword123! --archive
         print_success "Database restored"
     fi
 }

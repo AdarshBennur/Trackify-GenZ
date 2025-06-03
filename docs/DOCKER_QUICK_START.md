@@ -13,10 +13,10 @@ This guide will help you run the Trackify-GenZ application smoothly using Docker
 ### Option 1: Use the Startup Script (Recommended)
 ```bash
 # Start the application
-./start-app.sh
+./scripts/automation/start-app.sh
 
 # Stop the application
-./stop-app.sh
+./scripts/automation/stop-app.sh
 ```
 
 ### Option 2: Manual Docker Compose
@@ -113,10 +113,10 @@ SERVER_PORT=5002
 
 ## 🔄 Development Workflow
 
-1. **Start Development**: `./start-app.sh`
+1. **Start Development**: `./scripts/automation/start-app.sh`
 2. **Make Changes**: Edit code (auto-reloads)
 3. **View Logs**: Check Docker Desktop or `docker-compose logs`
-4. **Stop Development**: `./stop-app.sh`
+4. **Stop Development**: `./scripts/automation/stop-app.sh`
 
 ## 📈 Performance Tips
 

@@ -32,11 +32,11 @@ fi
 
 print_status "Docker is running"
 
-# Check if .env file exists
+# Create .env if it doesn't exist
 if [ ! -f .env ]; then
-    print_warning ".env file not found. Creating from template..."
-    cp env.example .env
-    print_status ".env file created"
+    echo "📝 Creating .env from template..."
+    cp ../../config/env.example .env
+    echo "✅ .env created. Please update it with your configuration."
 fi
 
 # Stop any running containers

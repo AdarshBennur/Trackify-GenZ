@@ -23,13 +23,13 @@ A streamlined deployment of the Trackify expense tracker with **exactly 7 essent
 ### Quick Start
 ```bash
 # Start the streamlined stack (7 services only)
-docker-compose -f docker-compose.streamlined.yml up -d
+docker-compose -f docker/docker-compose.streamlined.yml up -d
 
 # Check status
-docker-compose -f docker-compose.streamlined.yml ps
+docker-compose -f docker/docker-compose.streamlined.yml ps
 
 # Stop the stack
-docker-compose -f docker-compose.streamlined.yml down
+docker-compose -f docker/docker-compose.streamlined.yml down
 ```
 
 ### Access URLs (Docker)
@@ -112,7 +112,7 @@ Replace `<MINIKUBE_IP>` with your Minikube IP (`minikube ip`):
 ## 🔧 **Configuration Files**
 
 ### Docker Compose
-- `docker-compose.streamlined.yml` - Main compose file with 7 services
+- `docker/docker-compose.streamlined.yml` - Main compose file with 7 services
 - `monitoring/prometheus/prometheus-streamlined.yml` - Prometheus config for Docker
 
 ### Kubernetes
@@ -151,16 +151,16 @@ Replace `<MINIKUBE_IP>` with your Minikube IP (`minikube ip`):
 ### Docker Compose
 ```bash
 # View logs
-docker-compose -f docker-compose.streamlined.yml logs -f [service_name]
+docker-compose -f docker/docker-compose.streamlined.yml logs -f [service_name]
 
 # Scale a service
-docker-compose -f docker-compose.streamlined.yml up -d --scale client=2
+docker-compose -f docker/docker-compose.streamlined.yml up -d --scale client=2
 
 # Restart a service
-docker-compose -f docker-compose.streamlined.yml restart [service_name]
+docker-compose -f docker/docker-compose.streamlined.yml restart [service_name]
 
 # Clean up everything
-docker-compose -f docker-compose.streamlined.yml down -v
+docker-compose -f docker/docker-compose.streamlined.yml down -v
 ```
 
 ### Kubernetes
@@ -216,7 +216,7 @@ kubectl delete namespace trackify-streamlined
 ### From Docker Compose to Kubernetes
 ```bash
 # Stop Docker Compose
-docker-compose -f docker-compose.streamlined.yml down
+docker-compose -f docker/docker-compose.streamlined.yml down
 
 # Start Kubernetes
 ./scripts/start-k8s-streamlined.sh
@@ -228,7 +228,7 @@ docker-compose -f docker-compose.streamlined.yml down
 kubectl delete namespace trackify-streamlined
 
 # Start Docker Compose
-docker-compose -f docker-compose.streamlined.yml up -d
+docker-compose -f docker/docker-compose.streamlined.yml up -d
 ```
 
 ## 📈 **Resource Requirements**

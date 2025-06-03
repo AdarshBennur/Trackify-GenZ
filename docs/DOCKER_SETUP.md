@@ -17,15 +17,31 @@ expense-tracker/
 │   ├── Dockerfile               # Multi-stage build for Node.js app
 │   ├── .dockerignore            # Files to exclude from Docker context
 │   └── package.json             # Backend dependencies
-├── 📁 .github/workflows/         # CI/CD Pipeline
-│   └── ci-cd.yml                # GitHub Actions workflow
-├── docker-compose.yml           # Development environment
-├── docker-compose.prod.yml      # Production environment
-├── mongo-init.js                # MongoDB initialization script
-├── .env                         # Environment variables
-├── env.template                 # Environment template
-├── docker-scripts.sh            # Helper scripts
-└── README.md                    # Main documentation
+├── 📁 docker/                    # Docker configuration files
+│   ├── docker-compose.yml       # Development environment
+│   ├── docker-compose.prod.yml  # Production environment
+│   ├── docker-compose.full.yml  # Full DevOps stack
+│   └── docker-compose.atlas.yml # MongoDB Atlas configuration
+├── 📁 scripts/                   # Script files
+│   └── automation/              # Automation scripts
+│       ├── docker-scripts.sh    # Docker helper scripts
+│       ├── start-app.sh         # Quick start script
+│       └── stop-app.sh          # Quick stop script
+├── 📁 k8s/                      # Kubernetes configuration
+│   ├── k8s-scripts.sh           # Kubernetes helper scripts
+│   └── [k8s manifests]
+├── 📁 config/                   # Configuration files
+│   ├── env.example              # Environment template
+│   └── docker.env              # Docker-specific env vars
+├── 📁 docs/                     # Documentation
+│   ├── DOCKER_SETUP.md         # This file
+│   ├── DEVOPS_SETUP.md         # DevOps guide
+│   └── [other docs]
+├── 📁 .github/workflows/        # CI/CD Pipeline
+│   └── ci-cd.yml               # GitHub Actions workflow
+├── mongo-init.js               # MongoDB initialization script
+├── .env                        # Environment variables
+└── README.md                   # Main documentation
 ```
 
 ## 🚀 Quick Start
@@ -54,13 +70,13 @@ nano .env
 
 ```bash
 # Make scripts executable
-chmod +x docker-scripts.sh
+chmod +x scripts/automation/docker-scripts.sh
 
 # Build and start all services
-./docker-scripts.sh dev:up:build
+./scripts/automation/docker-scripts.sh dev:up:build
 
 # Or use Docker Compose directly
-docker-compose up --build
+docker-compose -f docker/docker-compose.yml up --build
 ```
 
 ### 4. Access Services
@@ -76,40 +92,40 @@ docker-compose up --build
 
 ```bash
 # Development Commands
-./docker-scripts.sh dev:build       # Build development containers
-./docker-scripts.sh dev:up          # Start development environment
-./docker-scripts.sh dev:up:build    # Build and start development environment
-./docker-scripts.sh dev:logs        # Show development logs
-./docker-scripts.sh dev:down        # Stop development environment
-./docker-scripts.sh dev:clean       # Clean up all containers and volumes
+./scripts/automation/docker-scripts.sh dev:build       # Build development containers
+./scripts/automation/docker-scripts.sh dev:up          # Start development environment
+./scripts/automation/docker-scripts.sh dev:up:build    # Build and start development environment
+./scripts/automation/docker-scripts.sh dev:logs        # Show development logs
+./scripts/automation/docker-scripts.sh dev:down        # Stop development environment
+./scripts/automation/docker-scripts.sh dev:clean       # Clean up all containers and volumes
 
 # Production Commands
-./docker-scripts.sh prod:build      # Build production containers
-./docker-scripts.sh prod:up         # Start production environment
-./docker-scripts.sh prod:down       # Stop production environment
+./scripts/automation/docker-scripts.sh prod:build      # Build production containers
+./scripts/automation/docker-scripts.sh prod:up         # Start production environment
+./scripts/automation/docker-scripts.sh prod:down       # Stop production environment
 
 # Utility Commands
-./docker-scripts.sh status          # Show container status and resource usage
-./docker-scripts.sh logs [SERVICE]  # Show logs (optional: specify service)
-./docker-scripts.sh restart SERVICE # Restart a specific service
+./scripts/automation/docker-scripts.sh status          # Show container status and resource usage
+./scripts/automation/docker-scripts.sh logs [SERVICE]  # Show logs (optional: specify service)
+./scripts/automation/docker-scripts.sh restart SERVICE # Restart a specific service
 
 # Database Commands
-./docker-scripts.sh db:backup       # Create database backup
-./docker-scripts.sh db:restore FILE # Restore database from backup
+./scripts/automation/docker-scripts.sh db:backup       # Create database backup
+./scripts/automation/docker-scripts.sh db:restore FILE # Restore database from backup
 ```
 
 ### Direct Docker Compose Commands
 
 ```bash
 # Development
-docker-compose up --build           # Build and start all services
-docker-compose down                 # Stop all services
-docker-compose logs -f              # Follow logs
-docker-compose ps                   # Show container status
+docker-compose -f docker/docker-compose.yml up --build           # Build and start all services
+docker-compose -f docker/docker-compose.yml down                 # Stop all services
+docker-compose -f docker/docker-compose.yml logs -f              # Follow logs
+docker-compose -f docker/docker-compose.yml ps                   # Show container status
 
 # Production
-docker-compose -f docker-compose.prod.yml up --build
-docker-compose -f docker-compose.prod.yml down
+docker-compose -f docker/docker-compose.prod.yml up --build
+docker-compose -f docker/docker-compose.prod.yml down
 ```
 
 ## 🏗 Architecture
@@ -203,12 +219,12 @@ docker stats
 
 ```bash
 # View all logs
-./docker-scripts.sh dev:logs
+./scripts/automation/docker-scripts.sh dev:logs
 
 # View specific service logs
-./docker-scripts.sh logs server
-./docker-scripts.sh logs client
-./docker-scripts.sh logs mongo
+./scripts/automation/docker-scripts.sh logs server
+./scripts/automation/docker-scripts.sh logs client
+./scripts/automation/docker-scripts.sh logs mongo
 
 # Follow logs in real-time
 docker-compose logs -f [service-name]
@@ -293,13 +309,13 @@ docker-compose ps mongo
 docker-compose logs mongo
 
 # Restart MongoDB service
-./docker-scripts.sh restart mongo
+./scripts/automation/docker-scripts.sh restart mongo
 ```
 
 #### Permission Issues
 ```bash
 # Fix script permissions
-chmod +x docker-scripts.sh
+chmod +x scripts/automation/docker-scripts.sh
 
 # Fix volume permissions (if needed)
 sudo chown -R $USER:$USER ./
@@ -314,8 +330,8 @@ docker system prune -f
 docker-compose build --no-cache
 
 # Clean and rebuild everything
-./docker-scripts.sh dev:clean
-./docker-scripts.sh dev:up:build
+./scripts/automation/docker-scripts.sh dev:clean
+./scripts/automation/docker-scripts.sh dev:up:build
 ```
 
 ### Performance Optimization
@@ -366,7 +382,7 @@ docker-compose build --no-cache
 2. **Deploy Application**
    ```bash
    # Production deployment
-   ./docker-scripts.sh prod:up
+   ./scripts/automation/docker-scripts.sh prod:up
    ```
 
 3. **Verify Deployment**
@@ -382,7 +398,7 @@ docker-compose build --no-cache
 
 1. Fork the repository
 2. Create a feature branch
-3. Test with Docker: `./docker-scripts.sh dev:up:build`
+3. Test with Docker: `./scripts/automation/docker-scripts.sh dev:up:build`
 4. Run tests and linting
 5. Submit pull request
 

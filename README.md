@@ -37,6 +37,32 @@ A premium, containerized full-stack web application for tracking personal expens
 - **Volume persistence** for data storage
 - **Environment-based configuration**
 
+## 📁 Project Structure
+
+The project has been organized into a clean, logical structure for better maintainability:
+
+```
+📦 Trackify-GenZ/
+├── 📁 client/                    # React Frontend
+├── 📁 server/                    # Node.js Backend  
+├── 📁 scripts/                   # Automation scripts
+│   └── automation/              # Docker and setup scripts
+├── 📁 docker/                   # Docker configuration files
+│   ├── docker-compose.yml      # Development environment
+│   ├── docker-compose.prod.yml # Production environment
+│   └── [other compose files]
+├── 📁 k8s/                      # Kubernetes configurations
+├── 📁 config/                   # Configuration files
+│   ├── env.example             # Environment template
+│   └── docker.env             # Docker-specific env vars
+├── 📁 docs/                     # Documentation
+│   ├── DOCKER_SETUP.md        # Docker setup guide
+│   ├── DEVOPS_SETUP.md        # DevOps guide
+│   └── [other documentation]
+├── 📁 [other directories]       # nginx, monitoring, etc.
+└── README.md                   # This file
+```
+
 ## 🐳 Docker Setup (Recommended)
 
 ### Option 1: Docker (Recommended)
@@ -56,7 +82,9 @@ Access the application:
 - Backend API: http://localhost:5000/api
 - Database: mongodb://localhost:27017/expenseDB
 
-For detailed Docker instructions, see [DOCKER_README.md](DOCKER_README.md).
+For detailed Docker instructions, see [docs/DOCKER_README.md](docs/DOCKER_README.md).
+
+> **📝 Note:** Project files have been reorganized for better maintainability. All documentation is now in the `docs/` folder, scripts are in `scripts/automation/`, and configuration files are in `config/`. See the [Project Structure](#-project-structure) section above for details.
 
 ### Option 2: Manual Setup
 
@@ -88,8 +116,8 @@ For detailed Docker instructions, see [DOCKER_README.md](DOCKER_README.md).
    docker-compose up --build
    
    # Or use the helper script
-   chmod +x docker-scripts.sh
-   ./docker-scripts.sh dev:up:build
+   chmod +x scripts/automation/docker-scripts.sh
+   ./scripts/automation/docker-scripts.sh dev:up:build
    ```
 
 4. **Access the application**
@@ -104,26 +132,26 @@ Use the included helper script for common operations:
 
 ```bash
 # Make script executable
-chmod +x docker-scripts.sh
+chmod +x scripts/automation/docker-scripts.sh
 
 # Development commands
-./docker-scripts.sh dev:up:build    # Build and start development environment
-./docker-scripts.sh dev:logs        # View logs from all services
-./docker-scripts.sh dev:down        # Stop all services
-./docker-scripts.sh dev:clean       # Clean up containers and volumes
+./scripts/automation/docker-scripts.sh dev:up:build    # Build and start development environment
+./scripts/automation/docker-scripts.sh dev:logs        # View logs from all services
+./scripts/automation/docker-scripts.sh dev:down        # Stop all services
+./scripts/automation/docker-scripts.sh dev:clean       # Clean up containers and volumes
 
 # Production commands
-./docker-scripts.sh prod:build      # Build production containers
-./docker-scripts.sh prod:up         # Start production environment
+./scripts/automation/docker-scripts.sh prod:build      # Build production containers
+./scripts/automation/docker-scripts.sh prod:up         # Start production environment
 
 # Utility commands
-./docker-scripts.sh status          # Show container status
-./docker-scripts.sh logs server     # Show logs for specific service
-./docker-scripts.sh restart client  # Restart specific service
+./scripts/automation/docker-scripts.sh status          # Show container status
+./scripts/automation/docker-scripts.sh logs server     # Show logs for specific service
+./scripts/automation/docker-scripts.sh restart client  # Restart specific service
 
 # Database operations
-./docker-scripts.sh db:backup       # Create database backup
-./docker-scripts.sh db:restore FILE # Restore from backup
+./scripts/automation/docker-scripts.sh db:backup       # Create database backup
+./scripts/automation/docker-scripts.sh db:restore FILE # Restore from backup
 ```
 
 ### 🏗 Docker Architecture
@@ -210,7 +238,7 @@ JWT_SECRET=your-super-secret-jwt-key
    ```bash
    # Create server environment file
    cd server
-   cp .env.example .env
+   cp ../config/env.example .env
    # Edit .env with your MongoDB URI and JWT secret
    ```
 
@@ -310,7 +338,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 If you encounter any issues:
 
 1. Check the [troubleshooting guide](#troubleshooting)
-2. Review container logs: `./docker-scripts.sh logs`
+2. Review container logs: `./scripts/automation/docker-scripts.sh logs`
 3. Create an issue on GitHub
 4. Check the health endpoints
 
@@ -337,7 +365,7 @@ docker-compose logs mongo
 **Permission issues:**
 ```bash
 # Make scripts executable
-chmod +x docker-scripts.sh
+chmod +x scripts/automation/docker-scripts.sh
 
 # Fix volume permissions (if needed)
 sudo chown -R $USER:$USER ./

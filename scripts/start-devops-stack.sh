@@ -69,36 +69,36 @@ start_stack() {
     print_header "🚀 Starting Expense Tracker DevOps Stack..."
     
     # Pull latest images
-    print_status "Pulling latest Docker images..."
-    docker-compose -f docker-compose.full.yml pull
+    print_status "🐳 Pulling latest images..."
+    docker-compose -f ../docker/docker-compose.full.yml pull
 
     # Start services in order
-    print_status "Starting infrastructure services..."
-    docker-compose -f docker-compose.full.yml up -d vault vault-init prometheus node-exporter
+    print_status "🚀 Starting Vault and dependencies..."
+    docker-compose -f ../docker/docker-compose.full.yml up -d vault vault-init prometheus node-exporter
 
     # Wait for Vault to be ready
     print_status "Waiting for Vault to be ready..."
     sleep 10
 
     # Start monitoring services
-    print_status "Starting monitoring services..."
-    docker-compose -f docker-compose.full.yml up -d grafana
+    print_status "📊 Starting Grafana..."
+    docker-compose -f ../docker/docker-compose.full.yml up -d grafana
 
     # Start database services
-    print_status "Starting database services..."
-    docker-compose -f docker-compose.full.yml up -d sonarqube-db
+    print_status "🗄️ Starting SonarQube database..."
+    docker-compose -f ../docker/docker-compose.full.yml up -d sonarqube-db
 
     # Wait for database to be ready
     print_status "Waiting for database to be ready..."
     sleep 15
 
     # Start application and code quality services
-    print_status "Starting application and code quality services..."
-    docker-compose -f docker-compose.full.yml up -d server client sonarqube
+    print_status "🚀 Starting main application and SonarQube..."
+    docker-compose -f ../docker/docker-compose.full.yml up -d server client sonarqube
 
     # Start reverse proxy (optional)
-    print_status "Starting reverse proxy..."
-    docker-compose -f docker-compose.full.yml up -d nginx || print_warning "Nginx configuration may need adjustment"
+    print_status "🌐 Starting Nginx (may fail on first run - this is normal)..."
+    docker-compose -f ../docker/docker-compose.full.yml up -d nginx || print_warning "Nginx configuration may need adjustment"
 
     print_status "✅ All services started!"
 }
@@ -106,7 +106,7 @@ start_stack() {
 # Show service status
 show_status() {
     print_header "📊 Service Status:"
-    docker-compose -f docker-compose.full.yml ps
+    docker-compose -f ../docker/docker-compose.full.yml ps
 }
 
 # Show access URLs
@@ -138,8 +138,8 @@ main() {
     show_urls
     
     print_header "🎉 DevOps Stack Started Successfully!"
-    print_status "To stop all services, run: docker-compose -f docker-compose.full.yml down"
-    print_status "To view logs, run: docker-compose -f docker-compose.full.yml logs -f [service-name]"
+    print_status "To stop all services, run: docker-compose -f ../docker/docker-compose.full.yml down"
+    print_status "To view logs, run: docker-compose -f ../docker/docker-compose.full.yml logs -f [service-name]"
 }
 
 # Run main function

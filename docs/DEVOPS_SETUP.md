@@ -50,7 +50,7 @@ This DevOps setup includes:
 
 ```bash
 # Start with Docker Compose (Development)
-./docker-scripts.sh dev:up:build
+./scripts/automation/docker-scripts.sh dev:up:build
 
 # Access application
 # Frontend: http://localhost:3000
@@ -61,13 +61,13 @@ This DevOps setup includes:
 
 ```bash
 # Setup complete Kubernetes environment
-./k8s-scripts.sh setup
+./k8s/k8s-scripts.sh setup
 
 # Check status
-./k8s-scripts.sh status
+./k8s/k8s-scripts.sh status
 
 # View logs
-./k8s-scripts.sh logs backend
+./k8s/k8s-scripts.sh logs backend
 ```
 
 ## 📊 Monitoring & Observability

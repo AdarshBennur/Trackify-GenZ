@@ -97,19 +97,19 @@ kubectl cluster-info
 ### Start All Services
 ```bash
 # Start complete stack
-docker-compose -f docker-compose.full.yml up -d
+docker-compose -f docker/docker-compose.full.yml up -d
 
 # Start specific services
-docker-compose -f docker-compose.full.yml up -d prometheus grafana vault
+docker-compose -f docker/docker-compose.full.yml up -d prometheus grafana vault
 
 # View logs
-docker-compose -f docker-compose.full.yml logs -f [service-name]
+docker-compose -f docker/docker-compose.full.yml logs -f [service-name]
 
 # Stop all services
-docker-compose -f docker-compose.full.yml down
+docker-compose -f docker/docker-compose.full.yml down
 
 # Remove all volumes (data loss!)
-docker-compose -f docker-compose.full.yml down -v
+docker-compose -f docker/docker-compose.full.yml down -v
 ```
 
 ### Service Startup Order
@@ -228,10 +228,10 @@ docker system df
 docker system prune -f
 
 # Check service logs
-docker-compose -f docker-compose.full.yml logs [service-name]
+docker-compose -f docker/docker-compose.full.yml logs [service-name]
 
 # Restart specific service
-docker-compose -f docker-compose.full.yml restart [service-name]
+docker-compose -f docker/docker-compose.full.yml restart [service-name]
 ```
 
 #### Port Conflicts
@@ -335,8 +335,8 @@ docker exec -it trackify-vault vault kv put expense-tracker/database \
 ### Regular Tasks
 ```bash
 # Update Docker images
-docker-compose -f docker-compose.full.yml pull
-docker-compose -f docker-compose.full.yml up -d
+docker-compose -f docker/docker-compose.full.yml pull
+docker-compose -f docker/docker-compose.full.yml up -d
 
 # Clean up unused resources
 docker system prune -f
