@@ -1,0 +1,135 @@
+# Production Docker Compose for Expense Tracker Application
+# This file is optimized for production deployment with security and performance considerations
+
+services:
+  # MongoDB Database Service - Production Configuration
+  mongo:
+    image: mongo:7.0
+    container_name: expense-tracker-mongodb-prod
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_DB_NAME}
+    volumes:
+      - mongo_data:/data/db
+      - mongo_config:/data/configdb
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - expense-tracker-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    command: ["mongod", "--auth", "--bind_ip_all"]
+    # Only expose internally, no external port mapping for security
+    expose:
+      - "27017"
+
+  # Backend API Service - Production Configuration
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+      target: production
+    container_name: expense-tracker-backend-prod
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 5001
+      MONGO_URI: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${MONGO_DB_NAME}?authSource=admin
+      JWT_SECRET: ${JWT_SECRET}
+      CLIENT_URL: ${CLIENT_URL}
+    expose:
+      - "5001"
+    networks:
+      - expense-tracker-network
+    depends_on:
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+
+  # Frontend React Service - Production Configuration
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      target: production
+    container_name: expense-tracker-frontend-prod
+    restart: always
+    environment:
+      REACT_APP_API_URL: ${REACT_APP_API_URL}
+      REACT_APP_ENV: production
+    ports:
+      - "${CLIENT_PORT:-80}:3000"
+    networks:
+      - expense-tracker-network
+    depends_on:
+      server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+
+  # Reverse Proxy (Production Only)
+  nginx:
+    image: nginx:alpine
+    container_name: expense-tracker-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    networks:
+      - expense-tracker-network
+    depends_on:
+      - client
+      - server
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+# Network Configuration
+networks:
+  expense-tracker-network:
+    driver: bridge
+    name: expense-tracker-network-prod
+
+# Volume Configuration for Data Persistence
+volumes:
+  mongo_data:
+    driver: local
+    name: expense-tracker-mongo-data-prod
+  mongo_config:
+    driver: local
+    name: expense-tracker-mongo-config-prod 

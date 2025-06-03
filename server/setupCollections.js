@@ -8,6 +8,8 @@ const Expense = require('./models/Expense');
 const Income = require('./models/Income');
 const Budget = require('./models/Budget');
 const Currency = require('./models/Currency');
+const Goal = require('./models/Goal');
+const Reminder = require('./models/Reminder');
 
 // Load environment variables
 dotenv.config();
@@ -34,7 +36,7 @@ async function setupCollections() {
     console.log('Existing collections:'.cyan, collectionNames.join(', '));
     
     // Make sure required collections exist
-    const requiredCollections = ['users', 'expenses', 'incomes', 'budgets', 'currencies'];
+    const requiredCollections = ['users', 'expenses', 'incomes', 'budgets', 'currencies', 'goals', 'reminders'];
     
     for (const collName of requiredCollections) {
       if (!collectionNames.includes(collName)) {
@@ -57,6 +59,12 @@ async function setupCollections() {
             break;
           case 'currencies':
             model = Currency;
+            break;
+          case 'goals':
+            model = Goal;
+            break;
+          case 'reminders':
+            model = Reminder;
             break;
           default:
             continue;
@@ -98,6 +106,14 @@ async function setupCollections() {
     
     // Add budget indexes if missing
     await Budget.collection.createIndex({ user: 1, category: 1, period: 1 }, { unique: true });
+    
+    // Add goal indexes if missing
+    await Goal.collection.createIndex({ user: 1, isCompleted: 1 });
+    await Goal.collection.createIndex({ user: 1, endDate: 1 });
+    
+    // Add reminder indexes if missing
+    await Reminder.collection.createIndex({ user: 1, dueDate: 1, isCompleted: 1 });
+    await Reminder.collection.createIndex({ user: 1, isCompleted: 1 });
     
     console.log('Indexes created successfully'.green);
     

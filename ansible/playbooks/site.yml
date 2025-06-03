@@ -1,0 +1,38 @@
+---
+# Main Ansible Playbook for Expense Tracker Infrastructure
+# This playbook configures servers and installs necessary components
+
+- name: Configure Common Infrastructure
+  hosts: all
+  become: true
+  roles:
+    - common
+    - security
+  tags:
+    - common
+    - security
+
+- name: Configure Kubernetes Nodes
+  hosts: kubernetes_nodes
+  become: true
+  roles:
+    - kubernetes
+  tags:
+    - kubernetes
+
+- name: Configure Monitoring Infrastructure
+  hosts: monitoring_servers
+  become: true
+  roles:
+    - monitoring
+  tags:
+    - monitoring
+
+- name: Deploy Application
+  hosts: kubernetes_masters
+  become: false
+  tasks:
+    - name: Deploy Expense Tracker Application
+      include_tasks: tasks/deploy-application.yml
+  tags:
+    - deploy 

@@ -1,0 +1,40 @@
+# Docker Compose Override for MongoDB Atlas
+# Use this with: docker-compose -f docker-compose.yml -f docker-compose.atlas.yml up
+
+services:
+  # React Frontend Service (no changes needed)
+  client:
+    environment:
+      REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:5001/api}
+      REACT_APP_ENV: ${NODE_ENV:-development}
+      HOST: 0.0.0.0
+
+  # Node.js Backend API Service - Atlas Configuration
+  server:
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: ${SERVER_PORT:-5001}
+      # MongoDB Atlas Connection String (from .env file)
+      MONGO_URI: ${MONGO_URI}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRE: ${JWT_EXPIRE:-30d}
+      JWT_COOKIE_EXPIRE: ${JWT_COOKIE_EXPIRE:-30}
+      CLIENT_URL: ${CLIENT_URL:-http://localhost:3000}
+      DEBUG_AUTH: ${DEBUG_AUTH:-true}
+      BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-10}
+    # Remove dependency on local MongoDB when using Atlas
+    depends_on: []
+    networks:
+      - trackify-network
+
+  # Disable local MongoDB service when using Atlas
+  mongo:
+    profiles:
+      - local-db-only
+
+  # Disable Mongo Express (doesn't work with Atlas)
+  mongo-express:
+    profiles:
+      - local-db-only 

@@ -423,7 +423,7 @@ exports.deleteIncome = asyncHandler(async (req, res) => {
 exports.getIncomeStats = asyncHandler(async (req, res) => {
   try {
     // Get period from query params (month or year)
-    const { period = 'month' } = req.query;
+    const { period = 'all' } = req.query;
     console.log(`Fetching income stats for period: ${period}`);
     
     // For guest users, return mock stats
@@ -458,28 +458,30 @@ exports.getIncomeStats = asyncHandler(async (req, res) => {
     // Set date range based on period
     const now = new Date();
     let startDate;
+    let matchQuery = { user: new mongoose.Types.ObjectId(req.user.id) };
     
     if (period === 'month') {
       // Current month
       startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      matchQuery.date = { $gte: startDate, $lte: now };
     } else if (period === 'year') {
       // Current year
       startDate = new Date(now.getFullYear(), 0, 1);
+      matchQuery.date = { $gte: startDate, $lte: now };
     } else {
-      // Default to month if invalid period
-      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      // Show ALL income data (no date filter) - This fixes the main issue
+      console.log('Fetching ALL income stats (no date filter)');
     }
     
-    console.log(`Date range: ${startDate.toISOString()} to ${now.toISOString()}`);
+    if (matchQuery.date) {
+      console.log(`Date range: ${matchQuery.date.$gte?.toISOString()} to ${matchQuery.date.$lte?.toISOString()}`);
+    } else {
+      console.log('No date filtering - showing all income data');
+    }
     
-    // 1. Get total income amount in date range
+    // 1. Get total income amount
     const totalResult = await Income.aggregate([
-      {
-        $match: {
-          user: new mongoose.Types.ObjectId(req.user.id),
-          date: { $gte: startDate, $lte: now }
-        }
-      },
+      { $match: matchQuery },
       {
         $group: {
           _id: null,
@@ -502,37 +504,45 @@ exports.getIncomeStats = asyncHandler(async (req, res) => {
       average = count > 0 ? total / count : 0;
     }
     
-    // 2. Group by date (day of month or month of year)
-    const timeGrouping = period === 'month' 
-      ? { day: { $dayOfMonth: '$date' } }
-      : { month: { $month: '$date' } };
-    
-    const timeStats = await Income.aggregate([
-      {
-        $match: {
-          user: new mongoose.Types.ObjectId(req.user.id),
-          date: { $gte: startDate, $lte: now }
-        }
-      },
-      {
-        $group: {
-          _id: timeGrouping,
-          total: { $sum: '$amount' }
-        }
-      },
-      { $sort: { '_id.day': 1, '_id.month': 1 } }
-    ]);
+    // 2. Group by date (day of month or month of year) - only if date filtering is applied
+    let timeStats = [];
+    if (matchQuery.date) {
+      const timeGrouping = period === 'month' 
+        ? { day: { $dayOfMonth: '$date' } }
+        : { month: { $month: '$date' } };
+      
+      timeStats = await Income.aggregate([
+        { $match: matchQuery },
+        {
+          $group: {
+            _id: timeGrouping,
+            total: { $sum: '$amount' }
+          }
+        },
+        { $sort: { '_id.day': 1, '_id.month': 1 } }
+      ]);
+    } else {
+      // For 'all' period, group by month across all time
+      timeStats = await Income.aggregate([
+        { $match: matchQuery },
+        {
+          $group: {
+            _id: { 
+              year: { $year: '$date' },
+              month: { $month: '$date' }
+            },
+            total: { $sum: '$amount' }
+          }
+        },
+        { $sort: { '_id.year': 1, '_id.month': 1 } }
+      ]);
+    }
     
     console.log('Time stats:', timeStats);
     
     // 3. Group by category
     const categoryStats = await Income.aggregate([
-      {
-        $match: {
-          user: new mongoose.Types.ObjectId(req.user.id),
-          date: { $gte: startDate, $lte: now }
-        }
-      },
+      { $match: matchQuery },
       {
         $group: {
           _id: '$category',

@@ -18,60 +18,60 @@ const connectDB = async () => {
     if (mongoURI) {
       // Remove any line breaks that might be in the connection string
       mongoURI = mongoURI.replace(/\n/g, '').replace(/\r/g, '');
-      console.log('Using MongoDB connection string (sensitive parts masked):'.cyan);
-      console.log(mongoURI.replace(/:[^:]*@/, ':****@').substring(0, 50) + '...'.cyan);
+      console.log('Using MongoDB Atlas connection (sensitive parts masked):'.cyan);
+      console.log(mongoURI.replace(/:[^:]*@/, ':****@').substring(0, 80) + '...'.cyan);
     }
 
-    // Set connection options for better reliability
+    // Set connection options optimized for MongoDB Atlas
     const options = {
       useNewUrlParser: true,
       useUnifiedTopology: true,
-      serverSelectionTimeoutMS: 10000, // Timeout for server selection
-      socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
-      family: 4 // Use IPv4, skip trying IPv6
+      serverSelectionTimeoutMS: 30000, // Increased timeout for Atlas
+      socketTimeoutMS: 75000, // Increased socket timeout
+      family: 4, // Use IPv4, skip trying IPv6
+      maxPoolSize: 10, // Maintain up to 10 socket connections
+      retryWrites: true,
+      w: 'majority'
     };
 
+    console.log('Attempting connection to MongoDB Atlas...'.yellow);
     const conn = await mongoose.connect(mongoURI, options);
 
-    console.log(`MongoDB Connected: ${conn.connection.host}`.cyan.underline.bold);
+    console.log(`MongoDB Atlas Connected: ${conn.connection.host}`.cyan.underline.bold);
     
     // Log the database name
     console.log(`Database: ${conn.connection.db.databaseName}`.yellow);
     
     // Set up connection event handlers
     mongoose.connection.on('disconnected', () => {
-      console.log('MongoDB disconnected'.yellow.bold);
+      console.log('MongoDB Atlas disconnected'.yellow.bold);
       isConnected = false;
     });
 
     mongoose.connection.on('error', (err) => {
-      console.error('MongoDB connection error:'.red.bold, err);
+      console.error('MongoDB Atlas connection error:'.red.bold, err.message);
       isConnected = false;
     });
 
-    // Set up automatic reconnection
-    mongoose.connection.on('disconnected', async () => {
-      console.log('Attempting to reconnect to MongoDB...'.yellow);
-      try {
-        await mongoose.connect(mongoURI, options);
-        console.log('Reconnected to MongoDB successfully'.green);
-        isConnected = true;
-      } catch (err) {
-        console.error('Failed to reconnect:'.red, err);
-      }
+    mongoose.connection.on('reconnected', () => {
+      console.log('MongoDB Atlas reconnected'.green.bold);
+      isConnected = true;
     });
     
     // Return the connection
     isConnected = true;
     return conn;
   } catch (err) {
-    console.error(`MongoDB Connection Error: ${err.message}`.red.bold);
+    console.error(`MongoDB Atlas Connection Error: ${err.message}`.red.bold);
     
     // More detailed error diagnostics
     if (err.name === 'MongoParseError') {
-      console.error('Invalid MongoDB connection string. Please check your .env file'.red);
+      console.error('Invalid MongoDB connection string. Please check your Atlas connection string'.red);
     } else if (err.name === 'MongoServerSelectionError') {
-      console.error('Could not connect to MongoDB server. Check network or credentials'.red);
+      console.error('Could not connect to MongoDB Atlas. Check your connection string and network'.red);
+      console.error('Make sure your IP is whitelisted in Atlas and credentials are correct'.red);
+    } else if (err.code === 8000) {
+      console.error('Authentication failed. Check your Atlas username and password'.red);
     }
     
     // Don't exit the process, let the caller handle it

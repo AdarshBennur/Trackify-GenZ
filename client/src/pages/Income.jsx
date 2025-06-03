@@ -29,7 +29,7 @@ const Income = () => {
   const [currentIncome, setCurrentIncome] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [stats, setStats] = useState(null);
-  const [statsPeriod, setStatsPeriod] = useState('month');
+  const [statsPeriod, setStatsPeriod] = useState('all');
   const [submitting, setSubmitting] = useState(false);
   const { user, isAuthenticated, isGuestUser } = useAuth();
   
@@ -282,6 +282,31 @@ const Income = () => {
           _id: { month: parseInt(month) },
           total: monthMap[month]
         }));
+      } else {
+        // 'all' period - group by month across all years
+        const monthYearMap = {};
+        
+        incomes.forEach(income => {
+          const date = new Date(income.date);
+          const year = date.getFullYear();
+          const month = date.getMonth();
+          const key = `${year}-${month}`;
+          
+          if (!monthYearMap[key]) {
+            monthYearMap[key] = {
+              year,
+              month,
+              total: 0
+            };
+          }
+          monthYearMap[key].total += parseFloat(income.amount);
+        });
+        
+        // Convert to array format for chart
+        timeStats = Object.values(monthYearMap).map(item => ({
+          _id: { year: item.year, month: item.month },
+          total: item.total
+        }));
       }
       
       // Group by category
@@ -332,7 +357,7 @@ const Income = () => {
         name: `Day ${item._id.day || ''}`,
         amount: item.total || 0
       }));
-    } else { // year period
+    } else if (statsPeriod === 'year') {
       const monthNames = [
         'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
         'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
@@ -345,6 +370,30 @@ const Income = () => {
       
       return sortedData.map(item => ({
         name: monthNames[item._id.month || 0],
+        amount: item.total || 0
+      }));
+    } else {
+      // 'all' period - format as "MMM YYYY"
+      const monthNames = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      ];
+      
+      // Sort by year and month
+      const sortedData = [...timeStats].sort((a, b) => {
+        const aYear = a._id.year || 0;
+        const bYear = b._id.year || 0;
+        const aMonth = a._id.month || 0;
+        const bMonth = b._id.month || 0;
+        
+        if (aYear !== bYear) {
+          return aYear - bYear;
+        }
+        return aMonth - bMonth;
+      });
+      
+      return sortedData.map(item => ({
+        name: `${monthNames[item._id.month || 0]} ${item._id.year || ''}`,
         amount: item.total || 0
       }));
     }

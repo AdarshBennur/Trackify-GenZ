@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { toast } from 'react-toastify';
 import { Link } from 'react-router-dom';
 import ExportButton from '../components/ExportButton';
-import StackedProgressBar from '../components/StackedProgressBar';
+import IncomeVsExpensesBar from '../components/IncomeVsExpensesBar';
 import { motion } from 'framer-motion';
 import {
   Chart as ChartJS,
@@ -102,6 +102,33 @@ const MOCK_EXPENSES = [
   }
 ];
 
+const MOCK_INCOMES = [
+  { 
+    _id: '1', 
+    title: 'Monthly Salary', 
+    amount: 5000.00, 
+    category: 'Salary', 
+    date: '2023-05-01T09:00:00Z',
+    currency: 'INR'
+  },
+  { 
+    _id: '2', 
+    title: 'Freelance Project', 
+    amount: 1200.00, 
+    category: 'Freelance', 
+    date: '2023-05-15T16:30:00Z',
+    currency: 'INR'
+  },
+  { 
+    _id: '3', 
+    title: 'Stock Dividend', 
+    amount: 350.25, 
+    category: 'Investment', 
+    date: '2023-05-10T14:00:00Z',
+    currency: 'INR'
+  }
+];
+
 const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -133,7 +160,7 @@ const Dashboard = () => {
           setStats(MOCK_STATS);
           setRecentExpenses(MOCK_EXPENSES);
           setExpenseData(MOCK_EXPENSES);
-          setIncomeData([]);
+          setIncomeData(MOCK_INCOMES);
         } 
         else if (isAuthenticated) {
           // Fetch real data for authenticated users
@@ -624,12 +651,12 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Budget Utilization - Stacked Progress Bar */}
+      {/* Income vs Expenses - Replacing Budget Utilization */}
       <div className="mb-8">
         <div className="card p-6">
-          <StackedProgressBar 
-            categoryStats={stats.categoryStats || []}
-            totalBudget={stats.totalExpenses > 0 ? stats.totalExpenses * 1.2 : 100000} // 20% buffer over current spending or default ₹1L
+          <IncomeVsExpensesBar 
+            incomeData={incomeData || []}
+            expenseData={expenseData || []}
             loading={loading}
             className="w-full"
           />

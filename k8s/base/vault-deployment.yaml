@@ -1,0 +1,246 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-config
+  namespace: expense-tracker
+  labels:
+    app: vault
+    component: security
+data:
+  vault.hcl: |
+    ui = true
+    disable_mlock = true
+
+    storage "file" {
+      path = "/vault/data"
+    }
+
+    listener "tcp" {
+      address = "0.0.0.0:8200"
+      tls_disable = 1
+    }
+
+    api_addr = "http://0.0.0.0:8200"
+    cluster_addr = "https://0.0.0.0:8201"
+    pid_file = "/tmp/pidfile"
+
+    log_level = "INFO"
+    raw_storage_endpoint = true
+    cluster_name = "expense-tracker-vault"
+
+    # Telemetry for monitoring
+    telemetry {
+      prometheus_retention_time = "30s"
+      disable_hostname = true
+    }
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: vault-secrets
+  namespace: expense-tracker
+  labels:
+    app: vault
+    component: security
+type: Opaque
+data:
+  root-token: bXlyb290  # myroot (base64)
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vault
+  namespace: expense-tracker
+  labels:
+    app: vault
+    component: security
+    version: v1.15.4
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vault
+      component: security
+  template:
+    metadata:
+      labels:
+        app: vault
+        component: security
+        version: v1.15.4
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8200"
+        prometheus.io/path: "/v1/sys/metrics"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 100
+        fsGroup: 1000
+      containers:
+      - name: vault
+        image: hashicorp/vault:1.15.4
+        imagePullPolicy: IfNotPresent
+        command: ["vault", "server", "-dev", "-dev-listen-address=0.0.0.0:8200"]
+        ports:
+        - containerPort: 8200
+          name: http
+          protocol: TCP
+        - containerPort: 8201
+          name: cluster
+          protocol: TCP
+        env:
+        - name: VAULT_DEV_ROOT_TOKEN_ID
+          valueFrom:
+            secretKeyRef:
+              name: vault-secrets
+              key: root-token
+        - name: VAULT_DEV_LISTEN_ADDRESS
+          value: "0.0.0.0:8200"
+        - name: VAULT_ADDR
+          value: "http://0.0.0.0:8200"
+        - name: VAULT_LOG_LEVEL
+          value: "INFO"
+        securityContext:
+          capabilities:
+            add: ["IPC_LOCK"]
+        volumeMounts:
+        - name: vault-data
+          mountPath: /vault/data
+        - name: vault-config
+          mountPath: /vault/config
+          readOnly: true
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /v1/sys/health
+            port: 8200
+          initialDelaySeconds: 30
+          timeoutSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /v1/sys/health
+            port: 8200
+          initialDelaySeconds: 5
+          timeoutSeconds: 5
+      volumes:
+      - name: vault-data
+        persistentVolumeClaim:
+          claimName: vault-pvc
+      - name: vault-config
+        configMap:
+          name: vault-config
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vault-pvc
+  namespace: expense-tracker
+  labels:
+    app: vault
+    component: security
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: standard
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vault-service
+  namespace: expense-tracker
+  labels:
+    app: vault
+    component: security
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8200"
+    prometheus.io/path: "/v1/sys/metrics"
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8200
+    targetPort: 8200
+    protocol: TCP
+    name: http
+  - port: 8201
+    targetPort: 8201
+    protocol: TCP
+    name: cluster
+  selector:
+    app: vault
+    component: security
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: vault-init
+  namespace: expense-tracker
+  labels:
+    app: vault-init
+    component: security
+spec:
+  template:
+    metadata:
+      labels:
+        app: vault-init
+        component: security
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: vault-init
+        image: hashicorp/vault:1.15.4
+        command: ["/bin/sh"]
+        args:
+          - -c
+          - |
+            echo "🔐 Initializing Vault for Expense Tracker..."
+            export VAULT_ADDR=http://vault-service:8200
+            export VAULT_TOKEN=myroot
+            
+            # Wait for Vault to be available
+            until vault status > /dev/null 2>&1; do
+                echo "⏳ Waiting for Vault to be available..."
+                sleep 5
+            done
+            
+            echo "✅ Vault is available"
+            
+            # Enable kv secrets engine
+            vault secrets enable -path=expense-tracker kv-v2 || echo "ℹ️  KV secrets engine already enabled"
+            
+            # Create application secrets
+            vault kv put expense-tracker/database \
+                mongo_uri="mongodb://mongodb-service:27017/expense_tracker" \
+                mongo_username="admin" \
+                mongo_password="secretpassword"
+            
+            vault kv put expense-tracker/jwt \
+                secret="supersecretjwtkey123456789" \
+                expire="30d" \
+                cookie_expire="30"
+            
+            vault kv put expense-tracker/api-keys \
+                prometheus_username="prometheus" \
+                prometheus_password="prometheus" \
+                grafana_admin_user="admin" \
+                grafana_admin_password="admin123"
+            
+            echo "✅ Vault initialization complete!"
+        env:
+        - name: VAULT_ADDR
+          value: "http://vault-service:8200"
+        - name: VAULT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: vault-secrets
+              key: root-token 

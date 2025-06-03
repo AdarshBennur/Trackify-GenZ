@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../utils/api';
 import { format } from 'date-fns';
 import { toast } from 'react-toastify';
 import { motion } from 'framer-motion';
@@ -75,7 +75,7 @@ const Reminders = () => {
       setLoading(true);
       try {
         // Fetch all reminders
-        const allRemindersResponse = await axios.get('/api/reminders', {
+        const allRemindersResponse = await api.get('/reminders', {
           params: {
             isCompleted: viewType === 'completed' ? true : undefined,
             upcoming: viewType === 'upcoming' ? true : undefined
@@ -84,7 +84,7 @@ const Reminders = () => {
 
         // Fetch upcoming reminders (always need this for notifications)
         if (viewType !== 'upcoming') {
-          const upcomingResponse = await axios.get('/api/reminders', {
+          const upcomingResponse = await api.get('/reminders', {
             params: {
               upcoming: true
             }
@@ -117,11 +117,11 @@ const Reminders = () => {
 
       let response;
       if (isEditing) {
-        response = await axios.put(`/api/reminders/${currentReminder._id}`, formattedData);
+        response = await api.put(`/reminders/${currentReminder._id}`, formattedData);
         setReminders(reminders.map(item => (item._id === currentReminder._id ? response.data.data : item)));
         toast.success('Reminder updated successfully!');
       } else {
-        response = await axios.post('/api/reminders', formattedData);
+        response = await api.post('/reminders', formattedData);
         setReminders([response.data.data, ...reminders]);
         toast.success('Reminder created successfully!');
       }
@@ -141,7 +141,7 @@ const Reminders = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this reminder?')) {
       try {
-        await axios.delete(`/api/reminders/${id}`);
+        await api.delete(`/reminders/${id}`);
         setReminders(reminders.filter(reminder => reminder._id !== id));
         toast.success('Reminder deleted successfully!');
       } catch (error) {
@@ -154,7 +154,7 @@ const Reminders = () => {
   // Handle marking as complete/incomplete
   const handleToggleComplete = async (id, currentStatus) => {
     try {
-      const response = await axios.put(`/api/reminders/${id}/complete`);
+      const response = await api.put(`/reminders/${id}/complete`);
       setReminders(reminders.map(item => (item._id === id ? response.data.data : item)));
       toast.success(`Reminder marked as ${currentStatus ? 'incomplete' : 'complete'}!`);
     } catch (error) {

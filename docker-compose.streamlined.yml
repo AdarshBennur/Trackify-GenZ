@@ -1,0 +1,183 @@
+networks:
+  trackify-network:
+    driver: bridge
+
+volumes:
+  trackify-prometheus-data:
+    name: trackify-prometheus-data
+  trackify-grafana-data:
+    name: trackify-grafana-data
+  trackify-vault-data:
+    name: trackify-vault-data
+  trackify-sonarqube-data:
+    name: trackify-sonarqube-data
+
+services:
+  # ======================
+  # APPLICATION SERVICES
+  # ======================
+  
+  client:
+    build: ./client
+    container_name: trackify-client
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:5001/api
+    networks:
+      - trackify-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      - "com.docker.desktop.extension.api.screenshot.url=http://localhost:3000"
+      - "com.docker.desktop.extension.api.open.url=http://localhost:3000"
+
+  server:
+    build: ./server
+    container_name: trackify-server
+    ports:
+      - "5001:5001"
+    environment:
+      - NODE_ENV=production
+      - PORT=5001
+      - MONGODB_URI=mongodb://localhost:27017/trackify
+    networks:
+      - trackify-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      - "com.docker.desktop.extension.api.screenshot.url=http://localhost:5001/api"
+      - "com.docker.desktop.extension.api.open.url=http://localhost:5001/api"
+
+  nginx:
+    image: nginx:1.25.3-alpine
+    container_name: trackify-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - trackify-network
+    depends_on:
+      - client
+      - server
+    labels:
+      - "com.docker.desktop.extension.api.screenshot.url=http://localhost"
+      - "com.docker.desktop.extension.api.open.url=http://localhost"
+
+  # ======================
+  # MONITORING SERVICES
+  # ======================
+  
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: trackify-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus-streamlined.yml:/etc/prometheus/prometheus.yml:ro
+      - trackify-prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    networks:
+      - trackify-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      - "com.docker.desktop.extension.api.screenshot.url=http://localhost:9090"
+      - "com.docker.desktop.extension.api.open.url=http://localhost:9090"
+
+  grafana:
+    image: grafana/grafana:10.2.2
+    container_name: trackify-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+    volumes:
+      - trackify-grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks:
+      - trackify-network
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      - "com.docker.desktop.extension.api.screenshot.url=http://localhost:3001"
+      - "com.docker.desktop.extension.api.open.url=http://localhost:3001"
+
+  # ======================
+  # SECURITY SERVICES
+  # ======================
+  
+  vault:
+    image: hashicorp/vault:1.15.4
+    container_name: trackify-vault
+    ports:
+      - "8200:8200"
+    environment:
+      - VAULT_DEV_ROOT_TOKEN_ID=myroot
+      - VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200
+      - VAULT_ADDR=http://127.0.0.1:8200
+    volumes:
+      - trackify-vault-data:/vault/data
+    cap_add:
+      - IPC_LOCK
+    networks:
+      - trackify-network
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      - "com.docker.desktop.extension.api.screenshot.url=http://localhost:8200"
+      - "com.docker.desktop.extension.api.open.url=http://localhost:8200"
+
+  # ======================
+  # CODE QUALITY SERVICES
+  # ======================
+  
+  sonarqube:
+    image: sonarqube:10.3-community
+    container_name: trackify-sonarqube
+    ports:
+      - "9000:9000"
+    environment:
+      - SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
+    volumes:
+      - trackify-sonarqube-data:/opt/sonarqube/data
+    networks:
+      - trackify-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9000/api/system/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    labels:
+      - "com.docker.desktop.extension.api.screenshot.url=http://localhost:9000"
+      - "com.docker.desktop.extension.api.open.url=http://localhost:9000" 

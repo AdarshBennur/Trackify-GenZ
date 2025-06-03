@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../utils/api';
 import { format } from 'date-fns';
 import { toast } from 'react-toastify';
 import { motion } from 'framer-motion';
@@ -86,7 +86,7 @@ const Goals = () => {
     const fetchGoals = async () => {
       setLoading(true);
       try {
-        const response = await axios.get('/api/goals', {
+        const response = await api.get('/goals', {
           params: {
             isCompleted: viewType === 'completed' ? true : viewType === 'active' ? false : undefined
           }
@@ -115,11 +115,11 @@ const Goals = () => {
 
       let response;
       if (isEditing) {
-        response = await axios.put(`/api/goals/${currentGoal._id}`, formattedData);
+        response = await api.put(`/goals/${currentGoal._id}`, formattedData);
         setGoals(goals.map(item => (item._id === currentGoal._id ? response.data.data : item)));
         toast.success('Goal updated successfully!');
       } else {
-        response = await axios.post('/api/goals', formattedData);
+        response = await api.post('/goals', formattedData);
         setGoals([response.data.data, ...goals]);
         toast.success('Goal created successfully!');
       }
@@ -138,7 +138,7 @@ const Goals = () => {
   // Handle progress update submission
   const onProgressSubmit = async (data) => {
     try {
-      const response = await axios.put(`/api/goals/${currentGoal._id}/progress`, {
+      const response = await api.put(`/goals/${currentGoal._id}/progress`, {
         amount: parseFloat(data.amount)
       });
       
@@ -165,7 +165,7 @@ const Goals = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this goal?')) {
       try {
-        await axios.delete(`/api/goals/${id}`);
+        await api.delete(`/goals/${id}`);
         setGoals(goals.filter(goal => goal._id !== id));
         toast.success('Goal deleted successfully!');
       } catch (error) {
