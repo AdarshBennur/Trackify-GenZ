@@ -39,6 +39,27 @@ A premium, containerized full-stack web application for tracking personal expens
 
 ## 🐳 Docker Setup (Recommended)
 
+### Option 1: Docker (Recommended)
+
+The easiest way to run the application is using Docker:
+
+```bash
+# Start all services (frontend, backend, database)
+docker compose up
+
+# Or run in background
+docker compose up -d
+```
+
+Access the application:
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:5000/api
+- Database: mongodb://localhost:27017/expenseDB
+
+For detailed Docker instructions, see [DOCKER_README.md](DOCKER_README.md).
+
+### Option 2: Manual Setup
+
 ### Prerequisites
 - Docker Desktop or Docker Engine (20.10+)
 - Docker Compose (2.0+)
