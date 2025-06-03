@@ -8,7 +8,7 @@ You need to create the following secrets in your GitHub repository:
 
 | Secret Name | Description | Example Value |
 |-------------|-------------|---------------|
-| `DOCKER_USERNAME` | Your Docker Hub username | `adarshbennur` |
+| `DOCKER_USERNAME` | Your Docker Hub username | `adarsh3107` |
 | `DOCKER_PASSWORD` | Your Docker Hub Personal Access Token | `dckr_pat_xyz...` |
 
 ## 📋 Step-by-Step Setup
@@ -34,7 +34,7 @@ You need to create the following secrets in your GitHub repository:
    **Secret 1: DOCKER_USERNAME**
    ```
    Name: DOCKER_USERNAME
-   Value: adarshbennur
+   Value: adarsh3107
    ```
 
    **Secret 2: DOCKER_PASSWORD**
@@ -43,21 +43,32 @@ You need to create the following secrets in your GitHub repository:
    Value: [Your Docker Hub Personal Access Token]
    ```
 
-### Step 3: Verify Your Docker Hub Repository
+### Step 3: Create Docker Hub Repository
+
+1. **Login to Docker Hub**: Go to [hub.docker.com](https://hub.docker.com)
+2. **Create Repository**: Click "Create Repository"
+3. **Repository Details**:
+   - Name: `trackify-genz`
+   - Description: `Expense Tracker Application - GenZ`
+   - Visibility: `Public` (recommended) or `Private`
+4. **Click "Create"**
+
+### Step 4: Verify Your Docker Hub Repository
 
 Ensure your Docker Hub repository exists:
-- Repository name: `adarshbennur/trackify-genz`
+- Repository name: `adarsh3107/trackify-genz`
 - Should be public or you have push permissions
+- You should see it in your Docker Hub dashboard
 
 ## 🏷️ Docker Image Naming Convention
 
 With the updated workflow, your Docker images will be tagged as:
 
 ```
-adarshbennur/trackify-genz-client:latest
-adarshbennur/trackify-genz-client:[commit-sha]
-adarshbennur/trackify-genz-server:latest
-adarshbennur/trackify-genz-server:[commit-sha]
+adarsh3107/trackify-genz-client:latest
+adarsh3107/trackify-genz-client:[commit-sha]
+adarsh3107/trackify-genz-server:latest
+adarsh3107/trackify-genz-server:[commit-sha]
 ```
 
 ## 🔍 Troubleshooting
@@ -66,7 +77,7 @@ adarshbennur/trackify-genz-server:[commit-sha]
 
 **1. "denied: requested access to the resource is denied"**
 - ✅ **Solution**: Verify Docker Hub repository exists and is accessible
-- ✅ **Check**: Repository name matches `adarshbennur/trackify-genz`
+- ✅ **Check**: Repository name matches `adarsh3107/trackify-genz`
 - ✅ **Verify**: Your Docker Hub account has push permissions
 
 **2. "no basic auth credentials"**
@@ -87,12 +98,12 @@ adarshbennur/trackify-genz-server:[commit-sha]
 
 2. **Test Docker Hub Login Locally**:
    ```bash
-   echo "YOUR_TOKEN" | docker login --username adarshbennur --password-stdin
+   echo "YOUR_TOKEN" | docker login --username adarsh3107 --password-stdin
    ```
 
 3. **Verify Repository Access**:
    ```bash
-   docker pull adarshbennur/trackify-genz-client:latest || echo "Repository ready for first push"
+   docker pull adarsh3107/trackify-genz-client:latest || echo "Repository ready for first push"
    ```
 
 ## 🚀 Testing the Pipeline
