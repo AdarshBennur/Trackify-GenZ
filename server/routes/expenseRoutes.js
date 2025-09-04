@@ -10,7 +10,7 @@ const {
   exportExpenses
 } = require('../controllers/expenseController');
 
-const { protect } = require('../middleware/auth');
+const { protect } = require('../middleware/authMiddleware');
 
 // Apply authentication middleware to all routes
 router.use(protect);

@@ -1,7 +1,17 @@
 const errorHandler = (err, req, res, next) => {
-  // Log the error stack for debugging
-  console.error('Error stack:'.red);
-  console.error(err.stack.red);
+  // Enhanced logging for production debugging
+  console.error('🚨 ERROR OCCURRED:'.red.bold);
+  console.error(`📍 Route: ${req.method} ${req.originalUrl}`.yellow);
+  console.error(`🕒 Time: ${new Date().toISOString()}`.cyan);
+  console.error(`👤 User: ${req.user ? req.user.email : 'Not authenticated'}`.cyan);
+  console.error(`🔍 Error Type: ${err.name}`.yellow);
+  console.error(`📝 Error Message: ${err.message}`.red);
+  
+  // Log stack trace only in development or if specifically needed
+  if (process.env.NODE_ENV === 'development' || process.env.LOG_STACK_TRACE === 'true') {
+    console.error('📚 Stack trace:'.gray);
+    console.error(err.stack.gray);
+  }
 
   // Mongoose bad ObjectId
   if (err.name === 'CastError') {
@@ -74,13 +84,21 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // Default to 500 server error
+  // Default to 500 server error with enhanced production debugging
   console.log(`General Error: ${err.message}`.red);
-  res.status(err.statusCode || 500).json({
+  
+  const errorResponse = {
     success: false,
     message: err.message || 'Server Error',
-    error: process.env.NODE_ENV === 'development' ? err.stack : 'An unexpected error occurred'
-  });
+    timestamp: new Date().toISOString(),
+    path: req.originalUrl,
+    method: req.method,
+    error: process.env.NODE_ENV === 'development' || process.env.DETAILED_ERRORS === 'true' 
+      ? err.stack 
+      : 'An unexpected error occurred'
+  };
+  
+  res.status(err.statusCode || 500).json(errorResponse);
 };
 
 module.exports = errorHandler; 

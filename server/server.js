@@ -68,14 +68,24 @@ app.use(cors({
 console.log(`CORS enabled for origins: ${allowedOrigins.join(', ')}`.green);
 
 // Check for essential environment variables
-if (!process.env.MONGO_URI) {
-  console.error('MONGO_URI is not defined in environment variables'.red.bold);
-  console.error('Please check your .env file and set the MONGO_URI variable'.red);
-}
+const requiredEnvVars = ['MONGO_URI', 'JWT_SECRET'];
+const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
 
-if (!process.env.JWT_SECRET) {
-  console.warn('JWT_SECRET is not defined in environment variables'.yellow.bold);
-  console.warn('Using fallback secret for JWT. This is not secure for production!'.yellow);
+if (missingEnvVars.length > 0) {
+  console.error(`❌ Missing required environment variables: ${missingEnvVars.join(', ')}`.red.bold);
+  console.error('Please set these variables in your Render dashboard:'.red);
+  missingEnvVars.forEach(envVar => {
+    console.error(`  - ${envVar}`.red);
+  });
+  
+  if (process.env.NODE_ENV === 'production') {
+    console.error('Cannot start production server without required environment variables'.red.bold);
+    process.exit(1);
+  } else {
+    console.warn('Using fallback values for development. NOT SECURE FOR PRODUCTION!'.yellow.bold);
+  }
+} else {
+  console.log('✅ All required environment variables are set'.green);
 }
 
 // Development logging
@@ -153,10 +163,17 @@ async function startServer() {
 
       // Start server
       app.listen(PORT, '0.0.0.0', () => {
-        console.log(`Server running on port ${PORT}`.yellow.bold);
-        console.log(`API available at: http://localhost:${PORT}/api`.yellow);
-        console.log(`Server bound to all interfaces (0.0.0.0:${PORT})`.green);
-        console.log(`Health check endpoint: http://localhost:${PORT}/api/health`.cyan);
+        console.log('🚀 SERVER STARTED SUCCESSFULLY'.green.bold);
+        console.log(`📡 Port: ${PORT}`.yellow);
+        console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`.cyan);
+        console.log(`🔗 API Base URL: ${process.env.NODE_ENV === 'production' ? 'https://trackify-genz.onrender.com/api' : `http://localhost:${PORT}/api`}`.yellow);
+        console.log(`❤️  Health Check: ${process.env.NODE_ENV === 'production' ? 'https://trackify-genz.onrender.com/api/health' : `http://localhost:${PORT}/api/health`}`.cyan);
+        console.log(`🌍 Server bound to all interfaces (0.0.0.0:${PORT})`.green);
+        
+        if (process.env.NODE_ENV === 'production') {
+          console.log('🔒 Production mode: Enhanced security enabled'.green);
+          console.log(`🎯 CORS allowed origins: ${allowedOrigins.join(', ')}`.blue);
+        }
       });
       
       // Success - break out of retry loop
@@ -182,26 +199,60 @@ async function startServer() {
 // Start the server
 startServer();
 
-// API health check route
-app.get('/api/health', (req, res) => {
-  res.status(200).json({
-    status: 'success',
-    message: 'API is running',
-    env: process.env.NODE_ENV,
-    database: isDbConnected() ? 'connected' : 'disconnected',
-    timestamp: new Date()
-  });
+// Enhanced API health check route
+app.get('/api/health', async (req, res) => {
+  try {
+    // Check database connection
+    const dbStatus = isDbConnected() ? 'connected' : 'disconnected';
+    
+    // Get database stats if connected
+    let dbInfo = { status: dbStatus };
+    if (isDbConnected()) {
+      try {
+        const stats = await mongoose.connection.db.stats();
+        dbInfo = {
+          status: 'connected',
+          collections: stats.collections,
+          documents: stats.objects,
+          database: mongoose.connection.db.databaseName
+        };
+      } catch (statsError) {
+        dbInfo.status = 'connected_but_stats_unavailable';
+      }
+    }
+    
+    res.status(200).json({
+      status: 'success',
+      message: 'API is running smoothly',
+      environment: process.env.NODE_ENV || 'development',
+      database: dbInfo,
+      server: {
+        uptime: process.uptime(),
+        memory: process.memoryUsage(),
+        version: process.version
+      },
+      cors: {
+        allowedOrigins: [
+          'http://localhost:3000',
+          'https://trackify-gen-z.vercel.app',
+          process.env.CLIENT_URL
+        ].filter(Boolean)
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Health check error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Health check failed',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // Error handler middleware - keep this after routes
 app.use(errorHandler);
 
-// Serve static assets in production
-if (process.env.NODE_ENV === 'production') {
-  // Set static folder
-  app.use(express.static(path.join(__dirname, '../client/build')));
-
-  app.get('*', (req, res) => {
-    res.sendFile(path.resolve(__dirname, '../client', 'build', 'index.html'));
-  });
-} 
+// Production API-only server - Frontend is deployed separately on Vercel
+// No need to serve React build files from Express backend 
