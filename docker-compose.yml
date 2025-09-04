@@ -18,12 +18,13 @@ services:
   # ======================
   
   client:
-    build: ../client
+    build: ./client
     container_name: trackify-client
+    restart: always
     ports:
       - "3000:3000"
     environment:
-      - REACT_APP_API_URL=http://localhost:5001/api
+      - REACT_APP_API_URL=http://localhost/api
     networks:
       - trackify-network
     healthcheck:
@@ -36,14 +37,19 @@ services:
       - "com.docker.desktop.extension.api.open.url=http://localhost:3000"
 
   server:
-    build: ../server
+    build: ./server
     container_name: trackify-server
+    restart: always
     ports:
       - "5001:5001"
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=development
       - PORT=5001
-      - MONGODB_URI=mongodb://localhost:27017/trackify
+      - MONGO_URI=mongodb+srv://aditrack:track999@tracker.pq6xgts.mongodb.net/expensetracker?retryWrites=true&w=majority&appName=tracker
+      - JWT_SECRET=supersecretjwtkey123456789
+      - JWT_EXPIRE=30d
+      - JWT_COOKIE_EXPIRE=30
+      - CLIENT_URL=http://localhost:3000
     networks:
       - trackify-network
     healthcheck:
@@ -63,7 +69,7 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     networks:
       - trackify-network
     depends_on:
@@ -86,10 +92,11 @@ services:
   prometheus:
     image: prom/prometheus:v2.48.0
     container_name: trackify-prometheus
+    restart: always
     ports:
       - "9090:9090"
     volumes:
-      - ../monitoring/prometheus/prometheus-streamlined.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/prometheus-streamlined.yml:/etc/prometheus/prometheus.yml:ro
       - trackify-prometheus-data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -113,6 +120,7 @@ services:
   grafana:
     image: grafana/grafana:10.2.2
     container_name: trackify-grafana
+    restart: always
     ports:
       - "3001:3000"
     environment:
@@ -121,8 +129,8 @@ services:
       - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
     volumes:
       - trackify-grafana-data:/var/lib/grafana
-      - ../monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ../monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
     networks:
       - trackify-network
     depends_on:
@@ -143,6 +151,7 @@ services:
   vault:
     image: hashicorp/vault:1.15.4
     container_name: trackify-vault
+    restart: always
     ports:
       - "8200:8200"
     environment:
@@ -171,6 +180,7 @@ services:
   sonarqube:
     image: sonarqube:10.3-community
     container_name: trackify-sonarqube
+    restart: always
     ports:
       - "9000:9000"
     environment:

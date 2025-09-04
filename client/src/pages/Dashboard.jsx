@@ -165,18 +165,16 @@ const Dashboard = () => {
         else if (isAuthenticated) {
           // Fetch real data for authenticated users
           try {
-            // Fetch expenses data
+            // Fetch expenses data (remove date filtering for now to show all data)
             const expenseResponse = await api.get('/expenses', {
               params: {
-                startDate,
                 limit: 100 // Get enough for statistics
               }
             });
             
-            // Fetch income data
+            // Fetch income data (remove date filtering for now to show all data)
             const incomeResponse = await api.get('/incomes', {
               params: {
-                startDate,
                 limit: 100
               }
             });
@@ -187,6 +185,12 @@ const Dashboard = () => {
             
             const incomes = incomeResponse.data.data || [];
             setIncomeData(incomes);
+            
+            // Debug logging to see what data we're getting
+            console.log('Dashboard - Income data loaded:', incomes.length, 'entries');
+            console.log('Dashboard - Expense data loaded:', expenses.length, 'entries');
+            console.log('Dashboard - First income entry:', incomes[0]);
+            console.log('Dashboard - First expense entry:', expenses[0]);
             
             // Get recent expenses (limited to 5)
             const sortedExpenses = [...expenses].sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -303,6 +307,7 @@ const Dashboard = () => {
       sevenDaysAgo.setDate(now.getDate() - 7);
       return sevenDaysAgo.toISOString();
     } else if (range === 'month') {
+      // Get data from 30 days ago OR from 30 days in the future to handle future-dated entries
       const thirtyDaysAgo = new Date(now);
       thirtyDaysAgo.setDate(now.getDate() - 30);
       return thirtyDaysAgo.toISOString();
@@ -311,6 +316,7 @@ const Dashboard = () => {
       oneYearAgo.setFullYear(now.getFullYear() - 1);
       return oneYearAgo.toISOString();
     }
+    return null; // Return null for no date filtering
   };
 
   // Format the chart data

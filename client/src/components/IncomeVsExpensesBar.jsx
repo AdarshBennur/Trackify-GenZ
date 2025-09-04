@@ -19,6 +19,12 @@ const IncomeVsExpensesBar = ({
   const netAmount = totalIncome - totalExpenses;
   const isPositive = netAmount >= 0;
   
+  // Debug logging
+  console.log('IncomeVsExpensesBar - Income data:', incomeData);
+  console.log('IncomeVsExpensesBar - Expense data:', expenseData);
+  console.log('IncomeVsExpensesBar - Total income:', totalIncome);
+  console.log('IncomeVsExpensesBar - Total expenses:', totalExpenses);
+  
   // Calculate expense breakdown by category
   const expensesByCategory = React.useMemo(() => {
     const categoryMap = {};

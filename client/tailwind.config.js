@@ -100,6 +100,9 @@ module.exports = {
         'luxe-gradient': 'linear-gradient(to right, #F8F6F0, #F4F1EB)',
         'luxe-gradient-dark': 'linear-gradient(to right, #1C2541, #193054)',
       },
+      zIndex: {
+        '45': '45',
+      },
     },
   },
   plugins: [
