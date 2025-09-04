@@ -1,13 +1,33 @@
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
+// Determine the API base URL
+const getApiBaseUrl = () => {
+  // If environment variable is set, use it
+  if (process.env.REACT_APP_API_URL) {
+    return process.env.REACT_APP_API_URL;
+  }
+  
+  // If in production and no env var, use the deployed backend
+  if (process.env.NODE_ENV === 'production') {
+    return 'https://trackify-genz.onrender.com/api';
+  }
+  
+  // Default to localhost for development
+  return 'http://localhost:5001/api';
+};
+
+const API_BASE_URL = getApiBaseUrl();
+console.log('API Base URL:', API_BASE_URL);
+
 // Create an instance of axios with default configs
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5001/api',
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json'
   },
-  withCredentials: true
+  withCredentials: true,
+  timeout: 10000 // 10 second timeout
 });
 
 // Add a request interceptor to attach token to every request

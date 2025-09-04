@@ -41,19 +41,31 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 
-// Allow all origins in development mode for testing
-if (process.env.NODE_ENV === 'development') {
-  app.use(cors({
-    origin: 'http://localhost:3000',
-    credentials: true
-  }));
-  console.log('CORS enabled for all origins in development mode'.yellow);
-} else {
-  app.use(cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:3000',
-    credentials: true
-  }));
-}
+// CORS configuration for both development and production
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://trackify-gen-z.vercel.app',
+  process.env.CLIENT_URL
+].filter(Boolean); // Remove any undefined values
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log(`CORS blocked request from origin: ${origin}`.red);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+console.log(`CORS enabled for origins: ${allowedOrigins.join(', ')}`.green);
 
 // Check for essential environment variables
 if (!process.env.MONGO_URI) {
