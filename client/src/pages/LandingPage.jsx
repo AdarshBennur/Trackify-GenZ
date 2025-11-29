@@ -128,8 +128,8 @@ const LandingPage = () => {
           <div className="flex justify-between items-center py-4">
             {/* Logo & Name */}
             <div className="flex items-center">
-              <img src={Logo} alt="MintFlow Logo" className="h-10 w-10 mr-3" />
-              <span className="text-2xl font-bold text-[#2E8B57]">Mint<span className="text-[#D4AF37]">Flow</span></span>
+              <img src={Logo} alt="CashHarbor Logo" className="h-10 w-10 mr-3" />
+              <span className="text-2xl font-bold text-[#2E8B57]">Cash<span className="text-[#D4AF37]">Harbor</span></span>
             </div>
 
             {/* Auth Links */}
@@ -201,7 +201,7 @@ const LandingPage = () => {
                     Take Control of Your <span className="text-[#2E8B57]">Financial Life</span>
                   </h1>
                   <p className="mt-6 text-lg leading-8 text-[#A0A0A0]">
-                    MintFlow helps you monitor your spending, set budgets, and achieve your
+                    CashHarbor helps you monitor your spending, set budgets, and achieve your
                     financial goals with an easy-to-use interface.
                   </p>
                 </motion.div>
