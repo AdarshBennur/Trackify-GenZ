@@ -22,6 +22,8 @@ import { CurrencyDollarIcon, CalendarIcon, ArrowTrendingUpIcon, BanknotesIcon } 
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import { formatINR, formatINRCompact } from '../utils/currency';
+import { protectedRequest } from '../utils/requestWithAuth';
+import { hasValidAuth } from '../utils/authGuard';
 
 // Register ChartJS components
 ChartJS.register(
@@ -60,70 +62,70 @@ const MOCK_STATS = {
 };
 
 const MOCK_EXPENSES = [
-  { 
-    _id: '1', 
-    title: 'Grocery shopping', 
-    amount: 85.95, 
-    category: 'Food', 
+  {
+    _id: '1',
+    title: 'Grocery shopping',
+    amount: 85.95,
+    category: 'Food',
     date: '2023-05-07T14:30:00Z',
     currency: 'INR'
   },
-  { 
-    _id: '2', 
-    title: 'Uber ride', 
-    amount: 24.50, 
-    category: 'Transportation', 
+  {
+    _id: '2',
+    title: 'Uber ride',
+    amount: 24.50,
+    category: 'Transportation',
     date: '2023-05-06T08:15:00Z',
     currency: 'INR'
   },
-  { 
-    _id: '3', 
-    title: 'Movie tickets', 
-    amount: 35.00, 
-    category: 'Entertainment', 
+  {
+    _id: '3',
+    title: 'Movie tickets',
+    amount: 35.00,
+    category: 'Entertainment',
     date: '2023-05-05T19:45:00Z',
     currency: 'INR'
   },
-  { 
-    _id: '4', 
-    title: 'Electric bill', 
-    amount: 125.75, 
-    category: 'Utilities', 
+  {
+    _id: '4',
+    title: 'Electric bill',
+    amount: 125.75,
+    category: 'Utilities',
     date: '2023-05-04T10:00:00Z',
     currency: 'INR'
   },
-  { 
-    _id: '5', 
-    title: 'New shoes', 
-    amount: 79.99, 
-    category: 'Shopping', 
+  {
+    _id: '5',
+    title: 'New shoes',
+    amount: 79.99,
+    category: 'Shopping',
     date: '2023-05-03T16:20:00Z',
     currency: 'INR'
   }
 ];
 
 const MOCK_INCOMES = [
-  { 
-    _id: '1', 
-    title: 'Monthly Salary', 
-    amount: 5000.00, 
-    category: 'Salary', 
+  {
+    _id: '1',
+    title: 'Monthly Salary',
+    amount: 5000.00,
+    category: 'Salary',
     date: '2023-05-01T09:00:00Z',
     currency: 'INR'
   },
-  { 
-    _id: '2', 
-    title: 'Freelance Project', 
-    amount: 1200.00, 
-    category: 'Freelance', 
+  {
+    _id: '2',
+    title: 'Freelance Project',
+    amount: 1200.00,
+    category: 'Freelance',
     date: '2023-05-15T16:30:00Z',
     currency: 'INR'
   },
-  { 
-    _id: '3', 
-    title: 'Stock Dividend', 
-    amount: 350.25, 
-    category: 'Investment', 
+  {
+    _id: '3',
+    title: 'Stock Dividend',
+    amount: 350.25,
+    category: 'Investment',
     date: '2023-05-10T14:00:00Z',
     currency: 'INR'
   }
@@ -149,62 +151,72 @@ const Dashboard = () => {
   useEffect(() => {
     const loadDashboardData = async () => {
       setLoading(true);
-      
+
       try {
+        // Only fetch if authenticated
+        if (!isAuthenticated || !hasValidAuth()) {
+          setLoading(false);
+          return;
+        }
+
         // Get the date range for filtering data
         const startDate = getStartDateFromRange(dateRange);
-        
+
         // Check if user is guest user
-        if (isAuthenticated && isGuestUser()) {
+        if (isGuestUser()) {
           // Use mock data for guest users
           setStats(MOCK_STATS);
           setRecentExpenses(MOCK_EXPENSES);
           setExpenseData(MOCK_EXPENSES);
           setIncomeData(MOCK_INCOMES);
-        } 
-        else if (isAuthenticated) {
+        }
+        else {
           // Fetch real data for authenticated users
           try {
-            // Fetch expenses data (remove date filtering for now to show all data)
-            const expenseResponse = await api.get('/expenses', {
+            // Fetch expenses data using protectedRequest
+            const expenseResponse = await protectedRequest({
+              url: '/expenses',
+              method: 'GET',
               params: {
                 limit: 100 // Get enough for statistics
               }
             });
-            
-            // Fetch income data (remove date filtering for now to show all data)
-            const incomeResponse = await api.get('/incomes', {
+
+            // Fetch income data using protectedRequest
+            const incomeResponse = await protectedRequest({
+              url: '/incomes',
+              method: 'GET',
               params: {
                 limit: 100
               }
             });
-            
+
             // Get the data from the responses
             const expenses = expenseResponse.data.data || [];
             setExpenseData(expenses);
-            
+
             const incomes = incomeResponse.data.data || [];
             setIncomeData(incomes);
-            
+
             // Debug logging to see what data we're getting
             console.log('Dashboard - Income data loaded:', incomes.length, 'entries');
             console.log('Dashboard - Expense data loaded:', expenses.length, 'entries');
             console.log('Dashboard - First income entry:', incomes[0]);
             console.log('Dashboard - First expense entry:', expenses[0]);
-            
+
             // Get recent expenses (limited to 5)
             const sortedExpenses = [...expenses].sort((a, b) => new Date(b.date) - new Date(a.date));
             setRecentExpenses(sortedExpenses.slice(0, 5));
-            
+
             // Calculate statistics if there are expenses
             if (expenses.length > 0) {
               // Calculate total expenses
               const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
-              
+
               // Calculate average daily expense
               const uniqueDates = new Set(expenses.map(exp => new Date(exp.date).toDateString()));
               const avgDailyExpense = totalExpenses / Math.max(uniqueDates.size, 1);
-              
+
               // Group expenses by category
               const categoryMap = {};
               expenses.forEach(expense => {
@@ -213,7 +225,7 @@ const Dashboard = () => {
                 }
                 categoryMap[expense.category] += expense.amount;
               });
-              
+
               // Sort categories by amount
               const categoryStats = Object.keys(categoryMap)
                 .map(category => ({
@@ -221,7 +233,7 @@ const Dashboard = () => {
                   totalAmount: categoryMap[category]
                 }))
                 .sort((a, b) => b.totalAmount - a.totalAmount);
-              
+
               // Group expenses by date
               const timelineMap = {};
               expenses.forEach(expense => {
@@ -231,7 +243,7 @@ const Dashboard = () => {
                 }
                 timelineMap[dateStr] += expense.amount;
               });
-              
+
               // Create timeline statistics
               const timelineStats = Object.keys(timelineMap)
                 .map(date => ({
@@ -239,7 +251,7 @@ const Dashboard = () => {
                   totalAmount: timelineMap[date]
                 }))
                 .sort((a, b) => new Date(a._id) - new Date(b._id));
-              
+
               // Update stats
               setStats({
                 totalExpenses,
@@ -259,9 +271,16 @@ const Dashboard = () => {
               });
             }
           } catch (apiError) {
+            // Handle NO_TOKEN error silently
+            if (apiError.code === 'NO_TOKEN') {
+              console.log('No auth token - skipping data fetch');
+              setLoading(false);
+              return;
+            }
+
             console.error('API error:', apiError);
             toast.error('Failed to fetch dashboard data');
-            
+
             // Set empty stats on error
             setStats({
               totalExpenses: 0,
@@ -273,19 +292,6 @@ const Dashboard = () => {
             setRecentExpenses([]);
           }
         }
-        else {
-          // Not authenticated, show empty state
-          setStats({
-            totalExpenses: 0,
-            avgDailyExpense: 0,
-            totalCategories: 0,
-            categoryStats: [],
-            timelineStats: []
-          });
-          setRecentExpenses([]);
-          setExpenseData([]);
-          setIncomeData([]);
-        }
       } catch (err) {
         setError('Failed to load dashboard data. Please try again later.');
         toast.error('Failed to load dashboard data.');
@@ -296,7 +302,7 @@ const Dashboard = () => {
     };
 
     loadDashboardData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateRange, isAuthenticated, user]);
 
   // Helper to get start date based on selected range
@@ -407,7 +413,7 @@ const Dashboard = () => {
       },
       tooltip: {
         callbacks: {
-          label: function(context) {
+          label: function (context) {
             const value = context.raw;
             const total = context.dataset.data.reduce((a, b) => a + b, 0);
             const percentage = ((value / total) * 100).toFixed(1);
@@ -437,7 +443,7 @@ const Dashboard = () => {
         },
         ticks: {
           color: '#A0A0A0',
-          callback: function(value) {
+          callback: function (value) {
             return formatINR(value);
           }
         }
@@ -449,7 +455,7 @@ const Dashboard = () => {
       },
       tooltip: {
         callbacks: {
-          label: function(context) {
+          label: function (context) {
             return formatINR(context.raw);
           }
         }
@@ -471,7 +477,7 @@ const Dashboard = () => {
       <h3 className="text-lg font-medium text-gray-700 mb-2">{message}</h3>
       <p className="text-gray-500 mb-4">Start tracking your finances to see insights here</p>
       {callToAction && (
-        <Link 
+        <Link
           to="/expenses"
           className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors"
         >
@@ -523,52 +529,49 @@ const Dashboard = () => {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
           <p className="mt-1 text-[#A0A0A0]">
-            {isAuthenticated && !isGuestUser() 
+            {isAuthenticated && !isGuestUser()
               ? "Overview of your financial activity for the selected period"
               : "Welcome to your financial dashboard. Log in to track your expenses."}
           </p>
         </div>
-        
+
         <div className="mt-4 md:mt-0 flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
           <div className="inline-flex rounded-md shadow-sm">
             <button
               type="button"
               onClick={() => handleDateRangeChange('week')}
-              className={`${
-                dateRange === 'week'
-                  ? 'bg-[#F4F1EB] text-[#2E8B57] font-medium'
-                  : 'bg-white text-[#A0A0A0]'
-              } px-4 py-2 text-sm rounded-l-md border border-[#F4F1EB] focus:z-10 focus:ring-1 focus:ring-[#D4AF37] transition-colors duration-200`}
+              className={`${dateRange === 'week'
+                ? 'bg-[#F4F1EB] text-[#2E8B57] font-medium'
+                : 'bg-white text-[#A0A0A0]'
+                } px-4 py-2 text-sm rounded-l-md border border-[#F4F1EB] focus:z-10 focus:ring-1 focus:ring-[#D4AF37] transition-colors duration-200`}
             >
               Week
             </button>
             <button
               type="button"
               onClick={() => handleDateRangeChange('month')}
-              className={`${
-                dateRange === 'month'
-                  ? 'bg-[#F4F1EB] text-[#2E8B57] font-medium'
-                  : 'bg-white text-[#A0A0A0]'
-              } px-4 py-2 text-sm border-t border-b border-[#F4F1EB] focus:z-10 focus:ring-1 focus:ring-[#D4AF37] transition-colors duration-200`}
+              className={`${dateRange === 'month'
+                ? 'bg-[#F4F1EB] text-[#2E8B57] font-medium'
+                : 'bg-white text-[#A0A0A0]'
+                } px-4 py-2 text-sm border-t border-b border-[#F4F1EB] focus:z-10 focus:ring-1 focus:ring-[#D4AF37] transition-colors duration-200`}
             >
               Month
             </button>
             <button
               type="button"
               onClick={() => handleDateRangeChange('year')}
-              className={`${
-                dateRange === 'year'
-                  ? 'bg-[#F4F1EB] text-[#2E8B57] font-medium'
-                  : 'bg-white text-[#A0A0A0]'
-              } px-4 py-2 text-sm rounded-r-md border border-[#F4F1EB] focus:z-10 focus:ring-1 focus:ring-[#D4AF37] transition-colors duration-200`}
+              className={`${dateRange === 'year'
+                ? 'bg-[#F4F1EB] text-[#2E8B57] font-medium'
+                : 'bg-white text-[#A0A0A0]'
+                } px-4 py-2 text-sm rounded-r-md border border-[#F4F1EB] focus:z-10 focus:ring-1 focus:ring-[#D4AF37] transition-colors duration-200`}
             >
               Year
             </button>
           </div>
-          
+
           <div className="flex space-x-3">
-            <ExportButton 
-              data={expenseData} 
+            <ExportButton
+              data={expenseData}
               stats={stats}
               recentExpenses={recentExpenses}
               filters={{
@@ -576,20 +579,20 @@ const Dashboard = () => {
                 endDate: new Date().toISOString(),
                 category: 'All'
               }}
-              filename="dashboard-expense-report" 
-              className="bg-white text-[#2E8B57] border border-gray-200 hover:bg-gray-50 font-medium rounded-lg px-4 py-2" 
+              filename="dashboard-expense-report"
+              className="bg-white text-[#2E8B57] border border-gray-200 hover:bg-gray-50 font-medium rounded-lg px-4 py-2"
             />
           </div>
         </div>
       </div>
-      
+
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <StatCard
           title="Total Expenses"
           value={formatINR(stats.totalExpenses)}
-          subtitle={`${stats.categoryStats.length > 0 
-            ? `Across ${stats.categoryStats.length} categories` 
+          subtitle={`${stats.categoryStats.length > 0
+            ? `Across ${stats.categoryStats.length} categories`
             : 'No expenses recorded'}`}
           icon={CurrencyDollarIcon}
           color="primary"
@@ -604,7 +607,7 @@ const Dashboard = () => {
         <StatCard
           title="Top Category"
           value={stats.categoryStats && stats.categoryStats.length > 0 ? stats.categoryStats[0]._id : 'None'}
-          subtitle={stats.categoryStats && stats.categoryStats.length > 0 
+          subtitle={stats.categoryStats && stats.categoryStats.length > 0
             ? formatINR(stats.categoryStats[0].totalAmount)
             : 'No category data yet'}
           icon={ArrowTrendingUpIcon}
@@ -620,11 +623,11 @@ const Dashboard = () => {
             <h2 className="text-xl font-semibold text-gray-900">Expense Breakdown</h2>
             <span className="text-sm text-[#A0A0A0]">By Category</span>
           </div>
-          
+
           {(!stats || !stats.categoryStats || stats.categoryStats.length === 0) ? (
-            <EmptyState 
-              message="No expense data to visualize" 
-              callToAction={true} 
+            <EmptyState
+              message="No expense data to visualize"
+              callToAction={true}
             />
           ) : (
             <div className="h-80">
@@ -638,16 +641,16 @@ const Dashboard = () => {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-gray-900">Spending Timeline</h2>
             <span className="text-sm text-[#A0A0A0]">
-              {dateRange === 'week' ? 'Last 7 days' : 
-               dateRange === 'month' ? 'Last 30 days' : 
-               'Last 12 months'}
+              {dateRange === 'week' ? 'Last 7 days' :
+                dateRange === 'month' ? 'Last 30 days' :
+                  'Last 12 months'}
             </span>
           </div>
-          
+
           {(!stats || !stats.timelineStats || stats.timelineStats.length === 0) ? (
-            <EmptyState 
-              message="No timeline data to show" 
-              callToAction={true} 
+            <EmptyState
+              message="No timeline data to show"
+              callToAction={true}
             />
           ) : (
             <div className="h-80">
@@ -660,7 +663,7 @@ const Dashboard = () => {
       {/* Income vs Expenses - Replacing Budget Utilization */}
       <div className="mb-8">
         <div className="card p-6">
-          <IncomeVsExpensesBar 
+          <IncomeVsExpensesBar
             incomeData={incomeData || []}
             expenseData={expenseData || []}
             loading={loading}
@@ -673,18 +676,18 @@ const Dashboard = () => {
       <div className="card p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold text-gray-900">Recent Expenses</h2>
-          <Link 
-            to="/expenses" 
+          <Link
+            to="/expenses"
             className="text-[#D4AF37] hover:text-[#C39E2D] font-medium text-sm"
           >
             View All
           </Link>
         </div>
-        
+
         {(!recentExpenses || recentExpenses.length === 0) ? (
-          <EmptyState 
-            message="No recent expenses to show" 
-            callToAction={true} 
+          <EmptyState
+            message="No recent expenses to show"
+            callToAction={true}
           />
         ) : (
           <div className="space-y-4">
