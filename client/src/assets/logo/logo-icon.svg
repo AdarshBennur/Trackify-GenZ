@@ -1,36 +1,68 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
   <!-- MintFlow Icon: Square app icon version -->
   <defs>
-    <linearGradient id="mintGradientIcon" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F4F1EB;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#F8F6F0;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="coinGradientIcon" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" style="stop-color:#2E8B57;stop-opacity:1" />
       <stop offset="50%" style="stop-color:#8BC6A9;stop-opacity:1" />
       <stop offset="100%" style="stop-color:#D4AF37;stop-opacity:1" />
     </linearGradient>
+    <linearGradient id="arrowGradientIcon" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#D4AF37;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#F5E7A3;stop-opacity:1" />
+    </linearGradient>
   </defs>
   
-  <!-- Background (optional, for app icon) -->
-  <rect width="512" height="512" fill="#F4F1EB" rx="100"/>
+  <!-- Background -->
+  <rect width="512" height="512" fill="url(#bgGradient)" rx="100"/>
   
-  <!-- Centered mint leaf + wave -->
+  <!-- Centered coin -->
   <g transform="translate(106, 106)">
-    <path d="M150 50 
-             C 112.5 50, 87.5 75, 87.5 112.5
-             C 87.5 137.5, 100 162.5, 125 175
-             C 112.5 187.5, 105 205, 112.5 220
-             C 125 237.5, 150 237.5, 162.5 220
-             C 170 205, 162.5 187.5, 150 175
-             C 175 162.5, 187.5 137.5, 187.5 112.5
-             C 187.5 75, 162.5 50, 150 50 Z" 
-          fill="url(#mintGradientIcon)"/>
+    <!-- Outer glow -->
+    <circle cx="150" cy="150" r="135" fill="url(#coinGradientIcon)" opacity="0.15"/>
     
-    <path d="M 75 187.5 
-             Q 100 180, 125 187.5
-             T 175 187.5
-             Q 200 195, 225 187.5
-             L 225 212.5
-             Q 200 220, 175 212.5
-             T 125 212.5
-             Q 100 205, 75 212.5 Z"
-          fill="url(#mintGradientIcon)" opacity="0.7"/>
+    <!-- Main coin -->
+    <circle cx="150" cy="150" r="105" fill="url(#coinGradientIcon)"/>
+    
+    <!-- Inner detail -->
+    <circle cx="150" cy="150" r="84" fill="none" stroke="#F8F6F0" stroke-width="5" opacity="0.5"/>
+    
+    <!-- Dollar symbol -->
+    <path d="M 150 105 
+             L 150 195
+             M 130 117
+             C 130 117, 150 111, 170 117
+             M 130 183
+             C 130 183, 150 189, 170 183" 
+          stroke="#F8F6F0" 
+          stroke-width="10" 
+          stroke-linecap="round" 
+          fill="none"/>
+    
+    <!-- Growth arrow -->
+    <path d="M 185 187
+             L 228 144
+             L 213 144
+             L 213 120
+             L 243 120
+             L 243 150
+             L 228 150
+             Z" 
+          fill="url(#arrowGradientIcon)"/>
+    
+    <!-- Flow lines -->
+    <path d="M 30 255
+             Q 60 245, 90 255
+             T 150 255
+             Q 180 260, 210 255
+             Q 240 250, 270 255" 
+          stroke="url(#coinGradientIcon)" 
+          stroke-width="8" 
+          stroke-linecap="round" 
+          fill="none" 
+          opacity="0.6"/>
   </g>
 </svg>

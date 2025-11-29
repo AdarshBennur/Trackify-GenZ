@@ -26,7 +26,7 @@ const Signup = () => {
         >
           <Link to="/" className="flex items-center">
             <img src={Logo} alt="MintFlow Logo" className="h-12 w-12 mr-3" />
-            <span className="text-xl font-bold text-[#2E8B57]">Mint<span className="text-[#D4AF37]">Flow</span></span>
+            <span className="text-2xl font-bold text-[#2E8B57]">Mint<span className="text-[#D4AF37]">Flow</span></span>
           </Link>
         </motion.div>
         <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-gray-900">

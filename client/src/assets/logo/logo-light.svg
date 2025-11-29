@@ -1,32 +1,57 @@
 <svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
   <!-- MintFlow Logo: Light version for dark backgrounds -->
   <defs>
-    <linearGradient id="mintGradientLight" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="coinGradientLight" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" style="stop-color:#3BA368;stop-opacity:1" />
       <stop offset="50%" style="stop-color:#A8DFC4;stop-opacity:1" />
       <stop offset="100%" style="stop-color:#E8C25A;stop-opacity:1" />
     </linearGradient>
+    <linearGradient id="arrowGradientLight" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#E8C25A;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FFF4CC;stop-opacity:1" />
+    </linearGradient>
   </defs>
   
-  <!-- Mint leaf shape merged with wave -->
-  <path d="M60 20 
-           C 45 20, 35 30, 35 45
-           C 35 55, 40 65, 50 70
-           C 45 75, 42 82, 45 88
-           C 50 95, 60 95, 65 88
-           C 68 82, 65 75, 60 70
-           C 70 65, 75 55, 75 45
-           C 75 30, 65 20, 60 20 Z" 
-        fill="url(#mintGradientLight)"/>
+  <!-- Outer coin circle -->
+  <circle cx="60" cy="60" r="45" fill="url(#coinGradientLight)" opacity="0.2"/>
   
-  <!-- Wave flow element -->
-  <path d="M 30 75 
-           Q 40 72, 50 75
-           T 70 75
-           Q 80 78, 90 75
-           L 90 85
-           Q 80 88, 70 85
-           T 50 85
-           Q 40 82, 30 85 Z"
-        fill="url(#mintGradientLight)" opacity="0.7"/>
+  <!-- Main coin -->
+  <circle cx="60" cy="60" r="35" fill="url(#coinGradientLight)"/>
+  
+  <!-- Inner circle detail -->
+  <circle cx="60" cy="60" r="28" fill="none" stroke="#FFFFFF" stroke-width="2" opacity="0.6"/>
+  
+  <!-- Dollar/Currency symbol -->
+  <path d="M 60 40 
+           L 60 80
+           M 52 45
+           C 52 45, 60 42, 68 45
+           M 52 75
+           C 52 75, 60 78, 68 75" 
+        stroke="#FFFFFF" 
+        stroke-width="3.5" 
+        stroke-linecap="round" 
+        fill="none"/>
+  
+  <!-- Upward growth arrow -->
+  <path d="M 75 68
+           L 92 51
+           L 85 51
+           L 85 40
+           L 99 40
+           L 99 54
+           L 92 54
+           Z" 
+        fill="url(#arrowGradientLight)"/>
+  
+  <!-- Flow lines -->
+  <path d="M 15 95
+           Q 30 90, 45 95
+           T 75 95
+           Q 85 97, 95 95" 
+        stroke="url(#coinGradientLight)" 
+        stroke-width="3" 
+        stroke-linecap="round" 
+        fill="none" 
+        opacity="0.7"/>
 </svg>

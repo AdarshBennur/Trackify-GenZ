@@ -57,7 +57,7 @@ const Navbar = () => {
                 <div className="flex flex-shrink-0 items-center">
                   <Link to="/" className="flex items-center">
                     <img src={Logo} alt="MintFlow Logo" className="h-10 w-10 mr-3" />
-                    <span className="text-xl font-bold text-[#2E8B57]">Mint<span className="text-[#D4AF37]">Flow</span></span>
+                    <span className="text-2xl font-bold text-[#2E8B57]">Mint<span className="text-[#D4AF37]">Flow</span></span>
                   </Link>
                 </div>
                 <div className="hidden sm:ml-6 sm:flex sm:space-x-8">

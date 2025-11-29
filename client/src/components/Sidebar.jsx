@@ -109,7 +109,7 @@ const Sidebar = () => {
         {/* Mobile Logo */}
         <Link to="/" className="flex items-center" onClick={handleLinkClick}>
           <img src={Logo} alt="MintFlow Logo" className="h-8 w-8 mr-2" />
-          <span className="text-xl font-bold text-[#2E8B57]">
+          <span className="text-2xl font-bold text-[#2E8B57]">
             Mint<span className="text-[#D4AF37]">Flow</span>
           </span>
         </Link>
@@ -154,7 +154,7 @@ const Sidebar = () => {
         <div className="hidden md:flex h-16 items-center px-6 border-b border-[#F4F1EB] bg-[#F8F6F0]">
           <Link to="/" className="flex items-center">
             <img src={Logo} alt="MintFlow Logo" className="h-10 w-10 mr-3" />
-            <span className="text-xl font-bold text-[#2E8B57]">
+            <span className="text-2xl font-bold text-[#2E8B57]">
               Mint<span className="text-[#D4AF37]">Flow</span>
             </span>
           </Link>
