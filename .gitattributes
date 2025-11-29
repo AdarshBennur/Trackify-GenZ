@@ -1,0 +1,29 @@
+# Force GitHub Linguist to treat EJS templates as JavaScript
+*.ejs linguist-language=JavaScript
+
+# Force HTML files to be counted as JavaScript
+*.html linguist-language=JavaScript
+
+# Ignore build & compiled assets
+client/build/* linguist-vendored
+docker/* linguist-vendored
+scripts/* linguist-vendored
+
+# Ignore documentation from language stats
+*.md linguist-documentation
+docs/** linguist-documentation
+
+# Ignore JSON config files
+*.json linguist-vendored
+
+# Ignore docker-related files
+docker-compose.yml linguist-vendored
+
+# Ignore images
+*.png linguist-vendored
+*.jpg linguist-vendored
+*.jpeg linguist-vendored
+*.svg linguist-vendored
+
+# Ignore logs
+*.log linguist-vendored
