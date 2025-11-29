@@ -2,9 +2,9 @@ import React, { useEffect } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
-import { ToastContainer } from 'react-toastify';
+import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import './utils/api'; // Import API utility to initialize it
+import './utils/apiClient'; // Import API utility to initialize it
 import { warmBackend } from './utils/warmup';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 
@@ -37,6 +37,20 @@ function App() {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [location.pathname]);
+
+  useEffect(() => {
+    const handleAuthExpired = () => {
+      toast.info('Session expired. Please sign in again.', {
+        toastId: 'session-expired' // Prevent duplicates
+      });
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 1200);
+    };
+
+    window.addEventListener('app:auth-expired', handleAuthExpired);
+    return () => window.removeEventListener('app:auth-expired', handleAuthExpired);
+  }, []);
 
   return (
     <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID || ''}>

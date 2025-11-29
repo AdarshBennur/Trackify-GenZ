@@ -1,6 +1,6 @@
 import React, { createContext, useReducer, useContext, useEffect } from 'react';
-import axios from 'axios';
-import { requestWithRetry } from '../utils/apiClient';
+import api, { requestWithRetry } from '../utils/apiClient';
+import { getToken, setToken, clearToken } from '../utils/token';
 
 // Create context
 export const AuthContext = createContext();
@@ -59,21 +59,10 @@ const authReducer = (state, action) => {
 export const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
-  // Set auth token in headers
-  const setAuthToken = (token) => {
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      localStorage.setItem('token', token);
-    } else {
-      delete axios.defaults.headers.common['Authorization'];
-      localStorage.removeItem('token');
-    }
-  };
-
   // Load user
   const loadUser = async () => {
     // Check for token in local storage
-    const token = localStorage.getItem('token');
+    const token = getToken();
 
     // If no token, just set loading to false and return
     if (!token) {
@@ -83,18 +72,12 @@ export const AuthProvider = ({ children }) => {
       return; // Early return - don't call API
     }
 
-    // Token exists, set it and try to load user
-    setAuthToken(token);
-
     try {
-      const res = await requestWithRetry({
-        url: '/auth/me',
-        method: 'GET'
-      });
+      const res = await api.get('/auth/me');
 
       dispatch({
         type: 'USER_LOADED',
-        payload: res.data.data
+        payload: res.data.data || res.data
       });
     } catch (err) {
       // Only log error, don't show toast (interceptor handles that)
@@ -106,7 +89,7 @@ export const AuthProvider = ({ children }) => {
       });
 
       // Clear invalid token
-      setAuthToken(null);
+      clearToken();
     }
   };
 
@@ -114,13 +97,9 @@ export const AuthProvider = ({ children }) => {
   const loginAsGuest = async () => {
     try {
       // Use the regular login endpoint with guest credentials
-      const res = await requestWithRetry({
-        url: '/auth/login',
-        method: 'POST',
-        data: {
-          email: 'guest@demo.com',
-          password: 'guest123'
-        }
+      const res = await api.post('/auth/login', {
+        email: 'guest@demo.com',
+        password: 'guest123'
       });
 
       dispatch({
@@ -128,7 +107,7 @@ export const AuthProvider = ({ children }) => {
         payload: res.data.user
       });
 
-      setAuthToken(res.data.token);
+      setToken(res.data.token);
       return res.data;
     } catch (err) {
       // If the login fails, create a guest user locally as fallback
@@ -160,35 +139,16 @@ export const AuthProvider = ({ children }) => {
       // Try /auth/register endpoint first, fallback to /auth/signup if needed
       let res;
       try {
-        // Add more detailed logging
         console.log('Sending registration request to /auth/register endpoint...');
-        res = await requestWithRetry({
-          url: '/auth/register',
-          method: 'POST',
-          data: formData
-        });
+        res = await api.post('/auth/register', formData);
         console.log('Registration successful with /auth/register endpoint');
       } catch (err) {
         console.log('Registration at /auth/register failed, trying /auth/signup');
-        console.log('Error details:', err.response?.data || err.message);
 
         // Try the alternative endpoint
-        res = await requestWithRetry({
-          url: '/auth/signup',
-          method: 'POST',
-          data: formData
-        });
+        res = await api.post('/auth/signup', formData);
         console.log('Registration successful with /auth/signup endpoint');
       }
-
-      console.log('Registration successful, user created in MongoDB');
-
-      // Log the returned data (without sensitive info)
-      console.log('Server response:', {
-        success: res.data.success,
-        user: res.data.user,
-        token: res.data.token ? '[TOKEN EXISTS]' : '[NO TOKEN]'
-      });
 
       // Update auth state
       dispatch({
@@ -197,30 +157,19 @@ export const AuthProvider = ({ children }) => {
       });
 
       // Store the token for authenticated requests
-      setAuthToken(res.data.token);
+      setToken(res.data.token);
 
       return res.data;
     } catch (err) {
-      // Handle MongoDB connection errors or other server issues
       const errorMessage = err.response?.data?.message ||
         err.response?.data?.errors?.[0]?.msg ||
         'Registration failed';
 
       console.error('Registration error:', errorMessage);
 
-      // Provide more specific error messages based on the server response
-      let displayError = errorMessage;
-
-      if (err.response?.status === 500) {
-        displayError = 'Server error. Please try again later.';
-        if (err.response?.data?.message?.includes('Database connection')) {
-          displayError = 'Database connection error. Please try again later.';
-        }
-      }
-
       dispatch({
         type: 'REGISTER_FAIL',
-        payload: displayError
+        payload: errorMessage
       });
 
       throw err;
@@ -230,18 +179,14 @@ export const AuthProvider = ({ children }) => {
   // Login user
   const login = async (formData) => {
     try {
-      const res = await requestWithRetry({
-        url: '/auth/login',
-        method: 'POST',
-        data: formData
-      });
+      const res = await api.post('/auth/login', formData);
 
       dispatch({
         type: 'LOGIN_SUCCESS',
         payload: res.data.user
       });
 
-      setAuthToken(res.data.token);
+      setToken(res.data.token);
 
       return res.data;
     } catch (err) {
@@ -263,10 +208,7 @@ export const AuthProvider = ({ children }) => {
     try {
       // Only call the logout endpoint if not in guest mode
       if (!localStorage.getItem('guestMode')) {
-        await requestWithRetry({
-          url: '/auth/logout',
-          method: 'GET'
-        });
+        await api.get('/auth/logout');
       }
     } catch (err) {
       console.error('Logout error:', err);
@@ -275,7 +217,7 @@ export const AuthProvider = ({ children }) => {
     // Clear guest mode flag
     localStorage.removeItem('guestMode');
 
-    setAuthToken(null);
+    clearToken();
     dispatch({ type: 'LOGOUT' });
   };
 
@@ -306,7 +248,7 @@ export const AuthProvider = ({ children }) => {
       });
     } else {
       // Only load user if token exists
-      const token = localStorage.getItem('token');
+      const token = getToken();
       if (token) {
         loadUser();
       } else {
@@ -316,36 +258,26 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  // Listen for Google auth success events
+  // Listen for auth success events (from Google login or other sources)
   useEffect(() => {
     const handleAuthSuccess = async (event) => {
       console.log('AuthContext received auth success event');
-
       try {
-        // Token already set in axios header by setToken()
-        // Load user data to sync state
-        const res = await requestWithRetry({
-          url: '/auth/me',
-          method: 'GET'
-        });
-
-        dispatch({
-          type: 'USER_LOADED',
-          payload: res.data.data || res.data
-        });
-
-        console.log('User loaded after Google auth');
+        const user = event?.detail?.user;
+        if (user) {
+          dispatch({ type: 'USER_LOADED', payload: user });
+          return;
+        }
+        // fallback: if event had no user, refetch
+        const res = await api.get('/auth/me');
+        dispatch({ type: 'USER_LOADED', payload: res.data.data || res.data });
       } catch (err) {
-        console.error('Failed to load user after Google auth:', err);
         dispatch({ type: 'AUTH_ERROR' });
       }
     };
 
     window.addEventListener('app:auth-success', handleAuthSuccess);
-
-    return () => {
-      window.removeEventListener('app:auth-success', handleAuthSuccess);
-    };
+    return () => window.removeEventListener('app:auth-success', handleAuthSuccess);
   }, []);
 
   return (
@@ -377,4 +309,4 @@ export const useAuth = () => {
   return context;
 };
 
-export default AuthContext; 
+export default AuthContext;

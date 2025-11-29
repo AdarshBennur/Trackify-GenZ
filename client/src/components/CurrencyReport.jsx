@@ -1,38 +1,38 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../utils/apiClient';
 import { toast } from 'react-toastify';
-import { 
+import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   LineChart, Line
 } from 'recharts';
 import CurrencySelector from './CurrencySelector';
 
-const CurrencyReport = ({ 
-  expenseData, 
-  incomeData, 
-  period = 'month', 
+const CurrencyReport = ({
+  expenseData,
+  incomeData,
+  period = 'month',
   showIncomeExpenseComparison = true
 }) => {
   const [currencies, setCurrencies] = useState([]);
   const [selectedCurrency, setSelectedCurrency] = useState(null);
   const [loading, setLoading] = useState(true);
   const [reportData, setReportData] = useState(null);
-  
+
   // Fetch available currencies
   useEffect(() => {
     const fetchCurrencies = async () => {
       try {
         setLoading(true);
-        const response = await axios.get('/api/currencies');
+        const response = await api.get('/api/currencies');
         setCurrencies(response.data.data);
-        
+
         // Get user's currency preference
-        const preferenceResponse = await axios.get('/api/currencies/preference');
+        const preferenceResponse = await api.get('/api/currencies/preference');
         setSelectedCurrency(preferenceResponse.data.data);
       } catch (error) {
         console.error('Error fetching currencies:', error);
         toast.error('Failed to load currencies. Using default USD.');
-        
+
         // Fallback to USD
         const usdCurrency = {
           code: 'USD',
@@ -48,56 +48,56 @@ const CurrencyReport = ({
 
     fetchCurrencies();
   }, []);
-  
+
   // Process data when currency or data changes
   useEffect(() => {
     if (selectedCurrency && (expenseData || incomeData)) {
       processReportData();
     }
   }, [selectedCurrency, expenseData, incomeData]);
-  
+
   // Process and convert the data based on selected currency
   const processReportData = () => {
     // Skip if missing data
     if (!selectedCurrency) return;
-    
+
     const baseCurrency = currencies.find(c => c.isBase) || { code: 'USD', rate: 1 };
     const conversionRate = selectedCurrency.rate / baseCurrency.rate;
-    
+
     // Process expense data
-    const processedExpenses = expenseData 
+    const processedExpenses = expenseData
       ? processFinancialData(expenseData, conversionRate)
       : [];
-      
+
     // Process income data
-    const processedIncome = incomeData 
+    const processedIncome = incomeData
       ? processFinancialData(incomeData, conversionRate)
       : [];
-      
+
     // Create comparison data if both datasets exist
-    const comparison = 
-      showIncomeExpenseComparison && 
-      expenseData && 
-      incomeData 
+    const comparison =
+      showIncomeExpenseComparison &&
+        expenseData &&
+        incomeData
         ? createComparisonData(processedIncome, processedExpenses)
         : [];
-    
+
     setReportData({
       expenses: processedExpenses,
       income: processedIncome,
       comparison
     });
   };
-  
+
   // Process financial data with conversion
   const processFinancialData = (data, conversionRate) => {
     return data.map(item => {
       // Get the original amount in base currency
       const baseAmount = item.amountInBaseCurrency || item.amount;
-      
+
       // Calculate amount in selected currency
       const convertedAmount = baseAmount / conversionRate;
-      
+
       return {
         ...item,
         originalAmount: item.amount,
@@ -105,23 +105,23 @@ const CurrencyReport = ({
       };
     });
   };
-  
+
   // Create data for income vs expense comparison
   const createComparisonData = (incomeData, expenseData) => {
     // Group and sum by time period (month, day, etc.)
     const incomeByPeriod = groupByTimePeriod(incomeData, period);
     const expensesByPeriod = groupByTimePeriod(expenseData, period);
-    
+
     // Combine into a single dataset for comparison
     const timeKeys = new Set([
       ...Object.keys(incomeByPeriod),
       ...Object.keys(expensesByPeriod)
     ]);
-    
+
     return Array.from(timeKeys).map(key => {
       const incomeAmount = incomeByPeriod[key] || 0;
       const expenseAmount = expensesByPeriod[key] || 0;
-      
+
       return {
         period: key,
         income: incomeAmount,
@@ -141,18 +141,18 @@ const CurrencyReport = ({
         // For days, already numeric
         return parseInt(a.period.replace('Day ', '')) - parseInt(b.period.replace('Day ', ''));
       }
-      
+
       return a.period.localeCompare(b.period);
     });
   };
-  
+
   // Group and sum financial data by time period
   const groupByTimePeriod = (data, period) => {
     const result = {};
-    
+
     data.forEach(item => {
       let key;
-      
+
       if (period === 'month') {
         // Use month name
         const date = new Date(item.date);
@@ -166,22 +166,22 @@ const CurrencyReport = ({
         // Default to ISO date
         key = new Date(item.date).toISOString().split('T')[0];
       }
-      
+
       if (!result[key]) {
         result[key] = 0;
       }
-      
+
       result[key] += item.convertedAmount;
     });
-    
+
     return result;
   };
-  
+
   // Handle currency change
   const handleCurrencyChange = (currency) => {
     setSelectedCurrency(currency);
   };
-  
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-6">
@@ -189,7 +189,7 @@ const CurrencyReport = ({
       </div>
     );
   }
-  
+
   return (
     <div className="space-y-6">
       {/* Currency selector */}
@@ -201,7 +201,7 @@ const CurrencyReport = ({
           setAsDefault={true}
         />
       </div>
-      
+
       {reportData && (
         <div className="space-y-8">
           {/* Income and expense comparison */}
@@ -219,29 +219,29 @@ const CurrencyReport = ({
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="period" />
                     <YAxis />
-                    <Tooltip 
+                    <Tooltip
                       formatter={(value) => [
                         `${selectedCurrency.symbol}${value.toFixed(2)}`,
                         value >= 0 ? 'Amount' : 'Deficit'
                       ]}
                     />
                     <Legend />
-                    <Bar 
-                      dataKey="income" 
-                      name={`Income (${selectedCurrency.code})`} 
+                    <Bar
+                      dataKey="income"
+                      name={`Income (${selectedCurrency.code})`}
                       fill="#4caf50"
                       radius={[4, 4, 0, 0]}
                     />
-                    <Bar 
-                      dataKey="expenses" 
-                      name={`Expenses (${selectedCurrency.code})`} 
+                    <Bar
+                      dataKey="expenses"
+                      name={`Expenses (${selectedCurrency.code})`}
                       fill="#f44336"
                       radius={[4, 4, 0, 0]}
                     />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-              
+
               {/* Net chart */}
               <div className="h-72 mt-4">
                 <h4 className="text-md font-medium text-gray-800 mb-3">
@@ -255,17 +255,17 @@ const CurrencyReport = ({
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="period" />
                     <YAxis />
-                    <Tooltip 
+                    <Tooltip
                       formatter={(value) => [
                         `${selectedCurrency.symbol}${value.toFixed(2)}`,
                         value >= 0 ? 'Profit' : 'Deficit'
                       ]}
                     />
                     <Legend />
-                    <Line 
-                      type="monotone" 
-                      dataKey="net" 
-                      name={`Net Income (${selectedCurrency.code})`} 
+                    <Line
+                      type="monotone"
+                      dataKey="net"
+                      name={`Net Income (${selectedCurrency.code})`}
                       stroke="#2196f3"
                       strokeWidth={2}
                       dot={{ r: 5 }}
@@ -276,7 +276,7 @@ const CurrencyReport = ({
               </div>
             </div>
           )}
-          
+
           {/* Summary statistics */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {reportData.income?.length > 0 && (
@@ -294,7 +294,7 @@ const CurrencyReport = ({
                 </div>
               </div>
             )}
-            
+
             {reportData.expenses?.length > 0 && (
               <div className="card bg-red-50 p-4">
                 <div className="text-sm text-red-600 font-medium">Total Expenses</div>
@@ -310,7 +310,7 @@ const CurrencyReport = ({
                 </div>
               </div>
             )}
-            
+
             {reportData.income?.length > 0 && reportData.expenses?.length > 0 && (
               <div className="card bg-blue-50 p-4">
                 <div className="text-sm text-blue-600 font-medium">Net Balance</div>
@@ -329,13 +329,13 @@ const CurrencyReport = ({
           </div>
         </div>
       )}
-      
-      {(!reportData || 
+
+      {(!reportData ||
         (!reportData.income?.length && !reportData.expenses?.length)) && (
-        <div className="text-center py-6 text-gray-500">
-          No financial data available for this period.
-        </div>
-      )}
+          <div className="text-center py-6 text-gray-500">
+            No financial data available for this period.
+          </div>
+        )}
     </div>
   );
 };

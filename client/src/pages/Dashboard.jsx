@@ -20,10 +20,10 @@ import {
 import { Pie, Line } from 'react-chartjs-2';
 import { CurrencyDollarIcon, CalendarIcon, ArrowTrendingUpIcon, BanknotesIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../context/AuthContext';
-import api from '../utils/api';
+import api from '../utils/apiClient';
 import { formatINR, formatINRCompact } from '../utils/currency';
 import { protectedRequest } from '../utils/requestWithAuth';
-import { hasValidAuth } from '../utils/authGuard';
+import { hasValidAuth, hasLikelyToken } from '../utils/authGuard';
 
 // Register ChartJS components
 ChartJS.register(
@@ -149,6 +149,10 @@ const Dashboard = () => {
 
   // Load dashboard data
   useEffect(() => {
+    if (!hasLikelyToken()) {
+      return;
+    }
+
     const loadDashboardData = async () => {
       setLoading(true);
 

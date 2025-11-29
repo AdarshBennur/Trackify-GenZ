@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { PlusIcon, XMarkIcon, CurrencyDollarIcon, CalendarIcon, ArrowTrendingUpIcon } from '@heroicons/react/24/outline';
 import BudgetForm from '../components/BudgetForm';
 import BudgetProgress from '../components/BudgetProgress';
-import api from '../utils/api';
+import api from '../utils/apiClient';
 import { useAuth } from '../context/AuthContext';
 import { Line } from 'react-chartjs-2';
 import { format } from 'date-fns';
@@ -49,13 +49,13 @@ const Budget = () => {
         if (isAuthenticated && !isGuestUser()) {
           // Get all budgets
           const budgetsResponse = await api.get('/budgets');
-          
+
           // Get budget utilization
           const utilizationResponse = await api.get('/budgets/utilization');
-          
+
           setBudgets(budgetsResponse.data.data || []);
           setUtilization(utilizationResponse.data.data || []);
-          
+
           // Calculate stats
           calculateStats(budgetsResponse.data.data || [], utilizationResponse.data.data || []);
         } else {
@@ -74,7 +74,7 @@ const Budget = () => {
     };
 
     fetchBudgets();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
 
   // Calculate budget statistics
@@ -91,13 +91,13 @@ const Budget = () => {
 
     // Calculate total budget amount
     const totalBudget = budgetData.reduce((sum, budget) => sum + budget.amount, 0);
-    
+
     // Calculate total utilization
     const totalUtilization = utilizationData.reduce((sum, item) => sum + item.spent, 0);
-    
+
     // Calculate average utilization percentage
     const avgUtilization = (totalUtilization / totalBudget) * 100;
-    
+
     // Find top category by amount
     const categoryMap = {};
     budgetData.forEach(budget => {
@@ -106,14 +106,14 @@ const Budget = () => {
       }
       categoryMap[budget.category] += budget.amount;
     });
-    
+
     // Convert to array and sort
     const categories = Object.entries(categoryMap)
       .map(([category, amount]) => ({ category, amount }))
       .sort((a, b) => b.amount - a.amount);
-    
+
     const topCategory = categories.length > 0 ? categories[0] : null;
-    
+
     setStats({
       totalBudget,
       totalUtilization,
@@ -129,11 +129,11 @@ const Budget = () => {
       setBudgets([...budgets, response.data.data]);
       toast.success('Budget created successfully!');
       setShowForm(false);
-      
+
       // Refresh utilization after adding budget
       const utilizationResponse = await api.get('/budgets/utilization');
       setUtilization(utilizationResponse.data.data);
-      
+
       // Recalculate stats
       calculateStats([...budgets, response.data.data], utilizationResponse.data.data);
     } catch (error) {
@@ -153,16 +153,16 @@ const Budget = () => {
       const updatedBudgets = budgets.map((budget) =>
         budget._id === currentBudget._id ? response.data.data : budget
       );
-      
+
       setBudgets(updatedBudgets);
       toast.success('Budget updated successfully!');
       setIsEditing(false);
       setCurrentBudget(null);
-      
+
       // Refresh utilization after editing budget
       const utilizationResponse = await api.get('/budgets/utilization');
       setUtilization(utilizationResponse.data.data);
-      
+
       // Recalculate stats
       calculateStats(updatedBudgets, utilizationResponse.data.data);
     } catch (error) {
@@ -184,7 +184,7 @@ const Budget = () => {
         setBudgets(updatedBudgets);
         setUtilization(utilization.filter((item) => item.budgetId !== id));
         toast.success('Budget deleted successfully!');
-        
+
         // Recalculate stats
         calculateStats(
           updatedBudgets,
@@ -208,7 +208,7 @@ const Budget = () => {
   const getBudgetUtilization = (budgetId) => {
     return utilization.find(item => item.budgetId === budgetId) || {
       spent: 0,
-      budgetAmount: 0, 
+      budgetAmount: 0,
       utilizationPercentage: 0,
       remaining: 0
     };
@@ -242,13 +242,13 @@ const Budget = () => {
 
     // Group budgets by category
     const categories = [...new Set(budgets.map(budget => budget.category))];
-    
+
     // Map budget and spent amounts by category
     const budgetAmounts = categories.map(category => {
       const categoryBudgets = budgets.filter(b => b.category === category);
       return categoryBudgets.reduce((sum, b) => sum + b.amount, 0);
     });
-    
+
     const spentAmounts = categories.map(category => {
       const categoryBudgets = budgets.filter(b => b.category === category);
       return categoryBudgets.reduce((sum, b) => {
@@ -300,7 +300,7 @@ const Budget = () => {
         },
         ticks: {
           color: '#A0A0A0',
-          callback: function(value) {
+          callback: function (value) {
             return '₹' + value;
           }
         }
@@ -318,7 +318,7 @@ const Budget = () => {
       },
       tooltip: {
         callbacks: {
-          label: function(context) {
+          label: function (context) {
             return `${context.dataset.label}: ₹${context.raw.toFixed(2)}`;
           }
         }
@@ -381,8 +381,8 @@ const Budget = () => {
         <StatCard
           title="Top Category"
           value={stats.topCategory ? stats.topCategory.category : 'None'}
-          subtitle={stats.topCategory 
-            ? `₹${stats.topCategory.amount.toFixed(2)}` 
+          subtitle={stats.topCategory
+            ? `₹${stats.topCategory.amount.toFixed(2)}`
             : 'No budget categories yet'}
           icon={ArrowTrendingUpIcon}
           color="accent"
