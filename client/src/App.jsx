@@ -5,6 +5,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import './utils/api'; // Import API utility to initialize it
+import { warmBackend } from './utils/warmup';
 
 // Pages
 import LandingPage from './pages/LandingPage';
@@ -23,6 +24,14 @@ import NotFound from './pages/NotFound';
 function App() {
   const location = useLocation();
 
+  // Warm up backend on app load to prevent cold start delays
+  useEffect(() => {
+    const apiUrl = process.env.REACT_APP_API_URL;
+    if (apiUrl) {
+      warmBackend(apiUrl);
+    }
+  }, []);
+
   // Scroll to top on route change
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -36,82 +45,82 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
-        
+
         {/* Protected routes with Layout */}
         <Route element={<ProtectedRoute />}>
-          <Route 
-            path="/dashboard" 
+          <Route
+            path="/dashboard"
             element={
               <Layout>
                 <Dashboard />
               </Layout>
-            } 
+            }
           />
-          
-          <Route 
-            path="/expenses" 
+
+          <Route
+            path="/expenses"
             element={
               <Layout>
                 <Expenses />
               </Layout>
-            } 
+            }
           />
-          
-          <Route 
-            path="/income" 
+
+          <Route
+            path="/income"
             element={
               <Layout>
                 <Income />
               </Layout>
-            } 
+            }
           />
-          
-          <Route 
-            path="/budget" 
+
+          <Route
+            path="/budget"
             element={
               <Layout>
                 <Budget />
               </Layout>
-            } 
+            }
           />
-          
-          <Route 
-            path="/search" 
+
+          <Route
+            path="/search"
             element={
               <Layout>
                 <Search />
               </Layout>
-            } 
+            }
           />
-          
-          <Route 
-            path="/reminders" 
+
+          <Route
+            path="/reminders"
             element={
               <Layout>
                 <Reminders />
               </Layout>
-            } 
+            }
           />
-          
-          <Route 
-            path="/goals" 
+
+          <Route
+            path="/goals"
             element={
               <Layout>
                 <Goals />
               </Layout>
-            } 
+            }
           />
-          
-          <Route 
-            path="/profile" 
+
+          <Route
+            path="/profile"
             element={
               <Layout>
                 <Profile />
               </Layout>
-            } 
+            }
           />
         </Route>
-        
+
         {/* Catch-all route for 404 */}
         <Route path="*" element={<NotFound />} />
       </Routes>
