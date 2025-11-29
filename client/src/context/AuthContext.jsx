@@ -75,29 +75,38 @@ export const AuthProvider = ({ children }) => {
     // Check for token in local storage
     const token = localStorage.getItem('token');
 
-    if (token) {
-      setAuthToken(token);
-
-      try {
-        const res = await requestWithRetry({
-          url: '/auth/me',
-          method: 'GET'
-        });
-
-        dispatch({
-          type: 'USER_LOADED',
-          payload: res.data.data
-        });
-      } catch (err) {
-        dispatch({
-          type: 'AUTH_ERROR',
-          payload: err.response?.data?.message || 'Authentication failed'
-        });
-      }
-    } else {
+    // If no token, just set loading to false and return
+    if (!token) {
       dispatch({
         type: 'AUTH_ERROR'
       });
+      return; // Early return - don't call API
+    }
+
+    // Token exists, set it and try to load user
+    setAuthToken(token);
+
+    try {
+      const res = await requestWithRetry({
+        url: '/auth/me',
+        method: 'GET'
+      });
+
+      dispatch({
+        type: 'USER_LOADED',
+        payload: res.data.data
+      });
+    } catch (err) {
+      // Only log error, don't show toast (interceptor handles that)
+      console.error('Failed to load user:', err.response?.status);
+
+      dispatch({
+        type: 'AUTH_ERROR',
+        payload: err.response?.data?.message || 'Authentication failed'
+      });
+
+      // Clear invalid token
+      setAuthToken(null);
     }
   };
 
@@ -296,7 +305,14 @@ export const AuthProvider = ({ children }) => {
         payload: guestUser
       });
     } else {
-      loadUser();
+      // Only load user if token exists
+      const token = localStorage.getItem('token');
+      if (token) {
+        loadUser();
+      } else {
+        // No token, just set loading to false
+        dispatch({ type: 'AUTH_ERROR' });
+      }
     }
   }, []);
 

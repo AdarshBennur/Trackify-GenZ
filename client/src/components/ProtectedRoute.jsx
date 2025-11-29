@@ -2,6 +2,7 @@ import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import LoadingSpinner from './LoadingSpinner';
+import { hasValidAuth } from '../utils/authGuard';
 
 const ProtectedRoute = () => {
   const { isAuthenticated, loading } = useAuth();
@@ -15,8 +16,9 @@ const ProtectedRoute = () => {
     );
   }
 
-  // If not authenticated, redirect to login page
-  if (!isAuthenticated) {
+  // Check both context auth and token validity
+  if (!isAuthenticated || !hasValidAuth()) {
+    // Silent redirect - no toast (interceptor handles that)
     return <Navigate to="/login" replace />;
   }
 
