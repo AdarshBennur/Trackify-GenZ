@@ -13,11 +13,13 @@ import { useForm } from 'react-hook-form';
 import { Line } from 'react-chartjs-2';
 import { format } from 'date-fns';
 import { formatINR, formatINRCompact } from '../utils/currency';
+import { protectedRequest } from '../utils/requestWithAuth';
+import { hasValidAuth } from '../utils/authGuard';
 
 const Expenses = () => {
   // Get auth state
   const { user, isAuthenticated } = useAuth();
-  
+
   // State for expenses
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -91,11 +93,11 @@ const Expenses = () => {
     if (expenses.length > 0) {
       // Calculate total expenses
       const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
-      
+
       // Calculate average daily expense
       const uniqueDates = new Set(expenses.map(exp => new Date(exp.date).toDateString()));
       const avgDailyExpense = totalExpenses / Math.max(uniqueDates.size, 1);
-      
+
       // Group expenses by category
       const categoryMap = {};
       expenses.forEach(expense => {
@@ -104,7 +106,7 @@ const Expenses = () => {
         }
         categoryMap[expense.category] += expense.amount;
       });
-      
+
       // Sort categories by amount
       const categoryStats = Object.keys(categoryMap)
         .map(category => ({
@@ -112,7 +114,7 @@ const Expenses = () => {
           totalAmount: categoryMap[category]
         }))
         .sort((a, b) => b.totalAmount - a.totalAmount);
-      
+
       // Group expenses by date
       const timelineMap = {};
       expenses.forEach(expense => {
@@ -122,7 +124,7 @@ const Expenses = () => {
         }
         timelineMap[dateStr] += expense.amount;
       });
-      
+
       // Create timeline statistics
       const timelineStats = Object.keys(timelineMap)
         .map(date => ({
@@ -130,7 +132,7 @@ const Expenses = () => {
           totalAmount: timelineMap[date]
         }))
         .sort((a, b) => new Date(a._id) - new Date(b._id));
-      
+
       // Update stats
       setStats({
         totalExpenses,
@@ -195,7 +197,7 @@ const Expenses = () => {
         },
         ticks: {
           color: '#A0A0A0',
-          callback: function(value) {
+          callback: function (value) {
             return '₹' + value;
           }
         }
@@ -207,7 +209,7 @@ const Expenses = () => {
       },
       tooltip: {
         callbacks: {
-          label: function(context) {
+          label: function (context) {
             return `₹${context.raw.toFixed(2)}`;
           }
         }
@@ -218,63 +220,80 @@ const Expenses = () => {
   // Fetch expenses from API
   useEffect(() => {
     fetchExpenses();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pagination.page, filters, isAuthenticated, user]);
 
   // Calculate stats when expenses change
   useEffect(() => {
     calculateStats();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expenses]);
 
   const fetchExpenses = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
-      // Only fetch data for authenticated users
-      if (isAuthenticated && user && user.role !== 'guest' && user.email !== 'guest@demo.com') {
-        // Build query params
-        const params = new URLSearchParams();
-        params.append('page', pagination.page);
-        params.append('limit', pagination.limit);
-        
-        if (filters.category && filters.category !== 'All') {
-          params.append('category', filters.category);
-        }
-        
-        if (filters.startDate) {
-          params.append('startDate', filters.startDate);
-        }
-        
-        if (filters.endDate) {
-          params.append('endDate', filters.endDate);
-        }
-        
-        if (filters.searchTerm) {
-          params.append('search', filters.searchTerm);
-        }
-        
-        // Make API request
-        const response = await api.get(`/expenses?${params.toString()}`);
-        
-        // Update state with response data
-        setExpenses(response.data.data || []);
-        setPagination({
-          ...pagination,
-          total: response.data.pagination?.total || 0,
-          pages: response.data.pagination?.pages || 1
-        });
-      } else {
-        // Guest users see empty data
+      // Only fetch if authenticated and has valid token
+      if (!isAuthenticated || !hasValidAuth()) {
+        setLoading(false);
+        return;
+      }
+
+      // Skip API call for guest users
+      if (user && (user.role === 'guest' || user.email === 'guest@demo.com')) {
         setExpenses([]);
         setPagination({
           ...pagination,
           total: 0,
           pages: 1
         });
+        setLoading(false);
+        return;
       }
+
+      // Build query params
+      const params = new URLSearchParams();
+      params.append('page', pagination.page);
+      params.append('limit', pagination.limit);
+
+      if (filters.category && filters.category !== 'All') {
+        params.append('category', filters.category);
+      }
+
+      if (filters.startDate) {
+        params.append('startDate', filters.startDate);
+      }
+
+      if (filters.endDate) {
+        params.append('endDate', filters.endDate);
+      }
+
+      if (filters.searchTerm) {
+        params.append('search', filters.searchTerm);
+      }
+
+      // Make API request using protectedRequest
+      const response = await protectedRequest({
+        url: `/expenses?${params.toString()}`,
+        method: 'GET'
+      });
+
+      // Update state with response data
+      setExpenses(response.data.data || []);
+      setPagination({
+        ...pagination,
+        total: response.data.pagination?.total || 0,
+        pages: response.data.pagination?.pages || 1
+      });
     } catch (err) {
+      // Handle NO_TOKEN error silently
+      if (err.code === 'NO_TOKEN') {
+        console.log('No auth token - skipping expenses fetch');
+        setLoading(false);
+        return;
+      }
+
       console.error('Error fetching expenses:', err);
       setError('Failed to load expenses. Please try again.');
       toast.error('Failed to load expenses');
@@ -287,18 +306,18 @@ const Expenses = () => {
   const handleAddExpense = async (expenseData) => {
     try {
       setLoading(true);
-      
+
       // Validate expense data on the client-side
       if (!expenseData.title) {
         toast.error('Please provide a title for the expense');
         return;
       }
-      
+
       if (!expenseData.amount || isNaN(parseFloat(expenseData.amount)) || parseFloat(expenseData.amount) <= 0) {
         toast.error('Please provide a valid amount greater than zero');
         return;
       }
-      
+
       if (!expenseData.category) {
         toast.error('Please select a category for the expense');
         return;
@@ -318,23 +337,23 @@ const Expenses = () => {
 
       // Log the data we're about to send to the API
       console.log('Sending expense data to API:', expenseData);
-      
+
       // Send POST request to API
       const response = await api.post('/expenses', expenseData);
-      
+
       // Add new expense to state
       setExpenses([response.data.data, ...expenses]);
-      
+
       toast.success('Expense added successfully!');
       setShowForm(false);
     } catch (err) {
       console.error('Error adding expense:', err);
-      
+
       // Display specific error message from the server if available
       if (err.response && err.response.data) {
         // Log the entire error response for debugging
         console.error('Server error response:', err.response.data);
-        
+
         if (err.response.data.errors && Array.isArray(err.response.data.errors) && err.response.data.errors.length > 0) {
           // If we have validation errors array, show them
           err.response.data.errors.forEach(errorMsg => {
@@ -363,17 +382,17 @@ const Expenses = () => {
   const handleEditExpense = async (expenseData) => {
     try {
       setLoading(true);
-      
+
       // Send PUT request to API
       const response = await api.put(`/expenses/${currentExpense._id}`, expenseData);
-      
+
       // Update expense in state
       setExpenses(
         expenses.map((expense) =>
           expense._id === currentExpense._id ? response.data.data : expense
         )
       );
-      
+
       toast.success('Expense updated successfully!');
       setIsEditing(false);
       setCurrentExpense(null);
@@ -390,13 +409,13 @@ const Expenses = () => {
     if (window.confirm('Are you sure you want to delete this expense?')) {
       try {
         setLoading(true);
-        
+
         // Send DELETE request to API
         await api.delete(`/expenses/${id}`);
-        
+
         // Remove expense from state
         setExpenses(expenses.filter((expense) => expense._id !== id));
-        
+
         toast.success('Expense deleted successfully!');
       } catch (err) {
         console.error('Error deleting expense:', err);
@@ -474,7 +493,7 @@ const Expenses = () => {
         </div>
       );
     }
-    
+
     // If error, show error message
     if (error) {
       return (
@@ -504,21 +523,21 @@ const Expenses = () => {
         </div>
       );
     }
-    
+
     // If no expenses and not guest user, show empty state
     if (expenses.length === 0 && (!user || (user.role !== 'guest' && user.email !== 'guest@demo.com'))) {
       return <EmptyState type="Expense" onAddNew={() => setShowForm(true)} />;
     }
-    
+
     // Otherwise, show expense table
     return (
       <>
-        <ExpenseTable 
-          expenses={expenses} 
-          onEdit={handleSetupEdit} 
-          onDelete={handleDeleteExpense} 
+        <ExpenseTable
+          expenses={expenses}
+          onEdit={handleSetupEdit}
+          onDelete={handleDeleteExpense}
         />
-        
+
         {pagination.pages > 1 && (
           <div className="mt-6 flex justify-between items-center">
             <div className="text-sm text-gray-500">
@@ -528,11 +547,10 @@ const Expenses = () => {
               <button
                 onClick={() => setPagination({ ...pagination, page: Math.max(1, pagination.page - 1) })}
                 disabled={pagination.page === 1}
-                className={`mx-1 px-3 py-1 rounded ${
-                  pagination.page === 1 
-                    ? 'text-gray-400 cursor-not-allowed' 
+                className={`mx-1 px-3 py-1 rounded ${pagination.page === 1
+                    ? 'text-gray-400 cursor-not-allowed'
                     : 'text-green-600 hover:bg-green-50'
-                }`}
+                  }`}
               >
                 Previous
               </button>
@@ -540,11 +558,10 @@ const Expenses = () => {
                 <button
                   key={i + 1}
                   onClick={() => setPagination({ ...pagination, page: i + 1 })}
-                  className={`mx-1 px-3 py-1 rounded ${
-                    pagination.page === i + 1
+                  className={`mx-1 px-3 py-1 rounded ${pagination.page === i + 1
                       ? 'bg-green-600 text-white'
                       : 'text-gray-700 hover:bg-gray-100'
-                  }`}
+                    }`}
                 >
                   {i + 1}
                 </button>
@@ -552,11 +569,10 @@ const Expenses = () => {
               <button
                 onClick={() => setPagination({ ...pagination, page: Math.min(pagination.pages, pagination.page + 1) })}
                 disabled={pagination.page === pagination.pages}
-                className={`mx-1 px-3 py-1 rounded ${
-                  pagination.page === pagination.pages
+                className={`mx-1 px-3 py-1 rounded ${pagination.page === pagination.pages
                     ? 'text-gray-400 cursor-not-allowed'
                     : 'text-green-600 hover:bg-green-50'
-                }`}
+                  }`}
               >
                 Next
               </button>
@@ -569,14 +585,14 @@ const Expenses = () => {
 
   const onSubmit = (data) => {
     setSubmitting(true);
-    
+
     // Create new expense object with the string ID format
     const newExpense = {
       ...data,
       amount: parseFloat(data.amount),
       date: data.date.toISOString()
     };
-    
+
     // If editing, maintain the existing ID
     if (isEditing && currentExpense._id) {
       newExpense._id = currentExpense._id;
@@ -584,7 +600,7 @@ const Expenses = () => {
       // Generate a new string ID for new expenses
       newExpense._id = `exp_${Date.now()}`;
     }
-    
+
     try {
       if (isEditing) {
         // Update existing expense
@@ -593,7 +609,7 @@ const Expenses = () => {
         // Add new expense
         handleAddExpense(newExpense);
       }
-      
+
       // Close form and reset
       setShowForm(false);
       setIsEditing(false);
@@ -616,7 +632,7 @@ const Expenses = () => {
       className="w-full"
     >
       <GuestBanner />
-      
+
       <div className="mb-4 sm:mb-6 md:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div className="mb-4 sm:mb-0">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Expenses</h1>
@@ -641,7 +657,7 @@ const Expenses = () => {
               </>
             )}
           </button>
-          
+
           <button
             onClick={() => setShowForm(true)}
             className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md hover:shadow-lg font-medium rounded-lg px-6 py-2.5 flex items-center transition-all duration-300"
@@ -649,23 +665,23 @@ const Expenses = () => {
             <PlusIcon className="h-4 w-4 mr-1" />
             New Expense
           </button>
-          
-          <ExportButton 
-            data={expenses} 
+
+          <ExportButton
+            data={expenses}
             filters={filters}
-            filename="expenses-report" 
-            className="bg-white text-[#2E8B57] border border-gray-200 hover:bg-gray-50 font-medium rounded-lg px-4 py-2" 
+            filename="expenses-report"
+            className="bg-white text-[#2E8B57] border border-gray-200 hover:bg-gray-50 font-medium rounded-lg px-4 py-2"
           />
         </div>
       </div>
-      
+
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <StatCard
           title="Total Expenses"
           value={formatINR(stats.totalExpenses)}
-          subtitle={`${stats.categoryStats.length > 0 
-            ? `Across ${stats.categoryStats.length} categories` 
+          subtitle={`${stats.categoryStats.length > 0
+            ? `Across ${stats.categoryStats.length} categories`
             : 'No expenses recorded'}`}
           icon={CurrencyDollarIcon}
           color="primary"
@@ -680,8 +696,8 @@ const Expenses = () => {
         <StatCard
           title="Top Category"
           value={stats.categoryStats && stats.categoryStats.length > 0 ? stats.categoryStats[0]._id : 'None'}
-          subtitle={stats.categoryStats && stats.categoryStats.length > 0 
-            ? formatINR(stats.categoryStats[0].totalAmount) 
+          subtitle={stats.categoryStats && stats.categoryStats.length > 0
+            ? formatINR(stats.categoryStats[0].totalAmount)
             : 'No categories yet'}
           icon={ArrowTrendingUpIcon}
           color="accent"
@@ -730,7 +746,7 @@ const Expenses = () => {
                 ))}
               </select>
             </div>
-            
+
             <div>
               <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">
                 Start Date
@@ -744,7 +760,7 @@ const Expenses = () => {
                 className="form-input block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
               />
             </div>
-            
+
             <div>
               <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">
                 End Date
@@ -758,7 +774,7 @@ const Expenses = () => {
                 className="form-input block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
               />
             </div>
-            
+
             <div>
               <label htmlFor="searchTerm" className="block text-sm font-medium text-gray-700 mb-1">
                 Search
@@ -774,7 +790,7 @@ const Expenses = () => {
               />
             </div>
           </div>
-          
+
           <div className="mt-4 flex justify-end">
             <button
               type="button"
@@ -793,10 +809,10 @@ const Expenses = () => {
           </div>
         </div>
       )}
-      
+
       {/* Render expenses content */}
       {renderExpenseContent()}
-      
+
       {/* Expense form modal */}
       {showForm && (
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-3 sm:p-4 z-50">
