@@ -1,14 +1,11 @@
-import { api } from './apiClient';
+import api from './apiClient';
 
 /**
- * Store authentication token and set axios header
+ * Store authentication token and set axios header synchronously
  * @param {string} token - JWT token
  */
 export function setToken(token) {
-    if (!token) {
-        console.warn('setToken called with no token');
-        return;
-    }
+    if (!token) return;
 
     // Store in localStorage
     localStorage.setItem('token', token);

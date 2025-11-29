@@ -377,6 +377,8 @@ exports.guestLogin = asyncHandler(async (req, res) => {
 // @route   GET /api/auth/me
 // @access  Private
 exports.getMe = asyncHandler(async (req, res) => {
+  console.log(`getMe called for user: ${req.user.email} (${req.user.id})`);
+
   try {
     const user = await User.findById(req.user.id);
 
@@ -545,6 +547,7 @@ exports.googleAuth = asyncHandler(async (req, res) => {
     }
 
     console.log(`User authenticated via Google: ${email}`);
+    console.log('Sending token response for Google auth...');
     sendTokenResponse(user, 200, res);
 
   } catch (error) {

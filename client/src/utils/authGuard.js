@@ -1,52 +1,43 @@
-// client/src/utils/authGuard.js
+import { getToken } from './token';
+import { jwtDecode } from 'jwt-decode';
 
 /**
- * Get stored auth token from localStorage
- * @returns {string|null} Token or null if not found
+ * Check if a token exists and looks like a JWT
+ * @returns {boolean}
  */
-export function getStoredToken() {
-    try {
-        return localStorage.getItem('token') || null;
-    } catch (e) {
-        console.error('Error accessing localStorage:', e);
-        return null;
-    }
+export function hasLikelyToken() {
+    const token = getToken();
+    if (!token) return false;
+    // optional: quick JWT format check
+    return token.split('.').length === 3;
 }
 
 /**
- * Check if token appears valid (basic JWT expiry check)
- * @param {string} token - JWT token
- * @returns {boolean} True if token appears valid
+ * Check if the stored token is valid (exists and not expired)
+ * @returns {boolean}
  */
-export function isTokenLikelyValid(token) {
+export function isTokenLikelyValid() {
+    const token = getToken();
     if (!token) return false;
 
     try {
-        // JWT format: header.payload.signature
-        const parts = token.split('.');
-        if (parts.length !== 3) return false;
+        const decoded = jwtDecode(token);
+        const currentTime = Date.now() / 1000;
 
-        // Decode payload
-        const payload = JSON.parse(atob(parts[1]));
-
-        // Check expiry if present
-        if (payload && payload.exp) {
-            return payload.exp * 1000 > Date.now();
+        if (decoded.exp < currentTime) {
+            return false;
         }
 
-        // If no exp, assume valid (server will verify)
         return true;
-    } catch (e) {
-        console.error('Token validation error:', e);
+    } catch (error) {
         return false;
     }
 }
 
 /**
- * Check if user is authenticated (has valid token)
+ * Combined check for auth status
  * @returns {boolean}
  */
 export function hasValidAuth() {
-    const token = getStoredToken();
-    return isTokenLikelyValid(token);
+    return hasLikelyToken() && isTokenLikelyValid();
 }

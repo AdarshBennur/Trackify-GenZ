@@ -1,74 +1,84 @@
 import axios from 'axios';
-import { toast } from 'react-toastify';
-import { getStoredToken } from './authGuard';
+import { clearToken, getToken } from './token';
 
-// Create axios instance with extended timeout for cold starts
+// Create single shared instance
 const api = axios.create({
-    baseURL: process.env.REACT_APP_API_URL,
-    timeout: 12000, // 12 seconds to tolerate cold starts
+    baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000/api',
+    headers: {
+        'Content-Type': 'application/json'
+    },
+    timeout: 20000 // 20s timeout
 });
 
-// Response interceptor for global error handling
-api.interceptors.response.use(
-    (response) => response,
-    (error) => {
-        const status = error.response?.status;
-
-        // Handle 401 Unauthorized errors
-        if (status === 401) {
-            const token = getStoredToken();
-
-            // If token existed but was rejected => session expired
-            if (token) {
-                // Clear invalid token
-                localStorage.removeItem('token');
-                delete axios.defaults.headers.common['Authorization'];
-
-                // Show friendly message
-                toast.info('Session expired. Please sign in again.', {
-                    toastId: 'session-expired' // Prevent duplicates
-                });
-
-                // Redirect to login after short delay
-                setTimeout(() => {
-                    window.location.href = '/login';
-                }, 1500);
-            }
-            // Else: no token => visitor trying to access protected route
-            // Don't show toast - ProtectedRoute will handle redirect
-
-            return Promise.reject(error);
+// Request interceptor to add token
+api.interceptors.request.use(
+    (config) => {
+        const token = getToken();
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
         }
+        return config;
+    },
+    (error) => Promise.reject(error)
+);
 
-        // Handle other errors (500, 404, etc.)
-        if (status >= 500) {
-            toast.error('Server error. Please try again later.');
-        } else if (status === 404) {
-            toast.error('Resource not found.');
-        } else if (error.message === 'Network Error') {
-            toast.error('Network error. Check your connection.');
+let isRefreshing = false;
+
+// Response interceptor for smart 401 handling
+api.interceptors.response.use(
+    (res) => res,
+    async (error) => {
+        const status = error?.response?.status;
+        const token = getToken();
+
+        if (status === 401) {
+            // If no token (visitor) => suppress toasts and return rejected promise
+            if (!token) {
+                // silently reject so pages can redirect via ProtectedRoute
+                return Promise.reject(error);
+            }
+
+            // If token existed, we want to check if token really expired or server temporarily failing.
+            // Avoid immediate token-clearing; attempt a single /auth/me check if not already refreshing.
+            if (!isRefreshing) {
+                isRefreshing = true;
+                try {
+                    console.log('401 received with token. Verifying session with /auth/me...');
+                    await api.get('/auth/me');
+                    // if this passes, token is valid; just retry original request
+                    console.log('Session verified. Retrying original request...');
+                    isRefreshing = false;
+                    return api(error.config); // retry original request
+                } catch (e) {
+                    console.log('Session verification failed. Clearing token.');
+                    isRefreshing = false;
+                    // token definitely invalid -> clear and show friendly message
+                    clearToken();
+                    // emit event to let app redirect gracefully
+                    window.dispatchEvent(new CustomEvent('app:auth-expired'));
+                    return Promise.reject(error);
+                }
+            }
+
+            // if already refreshing, just reject
+            return Promise.reject(error);
         }
 
         return Promise.reject(error);
     }
 );
 
-// Request with automatic retry and exponential backoff
-async function requestWithRetry(config, retries = 3, delay = 800) {
+// Helper for retry logic (kept for backward compatibility if needed, but api instance is preferred)
+export const requestWithRetry = async (options, retries = 3, backoff = 300) => {
     try {
-        return await api(config);
+        return await api(options);
     } catch (err) {
-        if (retries <= 0) throw err;
-
-        // Don't retry auth errors
-        if (err.response?.status === 401) {
-            throw err;
+        if (retries > 0 && (!err.response || err.response.status >= 500)) {
+            await new Promise(resolve => setTimeout(resolve, backoff));
+            return requestWithRetry(options, retries - 1, backoff * 2);
         }
-
-        // Wait before retry with exponential backoff
-        await new Promise(r => setTimeout(r, delay));
-        return requestWithRetry(config, retries - 1, delay * 2);
+        throw err;
     }
-}
+};
 
-export { api, requestWithRetry };
+export default api;

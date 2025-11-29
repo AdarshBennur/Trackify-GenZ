@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import api from '../utils/api';
+import api from '../utils/apiClient';
 
-const CurrencySelector = ({ 
+const CurrencySelector = ({
   selectedCurrency,
   onCurrencyChange,
   setAsDefault = false,
@@ -26,7 +26,7 @@ const CurrencySelector = ({
       try {
         const response = await api.get('/currencies');
         setCurrencies(response.data.data || []);
-        
+
         // Get user's currency preference - but we'll still default to INR
         try {
           const preferenceResponse = await api.get('/currencies/preference');
@@ -34,18 +34,18 @@ const CurrencySelector = ({
         } catch (prefError) {
           console.error('Error getting currency preference:', prefError);
         }
-        
+
         // Use INR by default regardless of user preference
         const inrCurrency = response.data.data?.find(c => c.code === 'INR') || defaultCurrency;
         onCurrencyChange(inrCurrency);
-        
+
       } catch (error) {
         console.error('Error fetching currencies:', error);
         toast.error('Failed to load currencies. Using default INR.');
-        
+
         // Fallback to INR
         setCurrencies([defaultCurrency]);
-        
+
         // Always use INR
         onCurrencyChange(defaultCurrency);
       } finally {
@@ -60,9 +60,9 @@ const CurrencySelector = ({
   const handleCurrencyChange = async (e) => {
     const currencyCode = e.target.value;
     const selectedCurrency = currencies.find(c => c.code === currencyCode) || defaultCurrency;
-    
+
     onCurrencyChange(selectedCurrency);
-    
+
     // If setAsDefault is true, update user preference
     if (setAsDefault) {
       try {
@@ -116,7 +116,7 @@ const CurrencySelector = ({
           </option>
         ))}
       </select>
-      
+
       {setAsDefault && userPreference && selectedCurrency?.code !== userPreference.code && (
         <button
           onClick={async () => {

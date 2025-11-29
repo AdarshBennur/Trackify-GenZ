@@ -6,7 +6,8 @@ import ExportButton from '../components/ExportButton';
 import EmptyState from '../components/EmptyState';
 import { motion } from 'framer-motion';
 import { FunnelIcon, PlusIcon, XMarkIcon, ChartBarIcon, TagIcon, CalendarIcon, CurrencyDollarIcon, ArrowTrendingUpIcon } from '@heroicons/react/24/outline';
-import api from '../utils/api';
+import api from '../utils/apiClient';
+import { hasLikelyToken } from '../utils/authGuard';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -235,7 +236,7 @@ const Expenses = () => {
 
     try {
       // Only fetch if authenticated and has valid token
-      if (!isAuthenticated || !hasValidAuth()) {
+      if (!isAuthenticated || !hasLikelyToken()) {
         setLoading(false);
         return;
       }
@@ -548,8 +549,8 @@ const Expenses = () => {
                 onClick={() => setPagination({ ...pagination, page: Math.max(1, pagination.page - 1) })}
                 disabled={pagination.page === 1}
                 className={`mx-1 px-3 py-1 rounded ${pagination.page === 1
-                    ? 'text-gray-400 cursor-not-allowed'
-                    : 'text-green-600 hover:bg-green-50'
+                  ? 'text-gray-400 cursor-not-allowed'
+                  : 'text-green-600 hover:bg-green-50'
                   }`}
               >
                 Previous
@@ -559,8 +560,8 @@ const Expenses = () => {
                   key={i + 1}
                   onClick={() => setPagination({ ...pagination, page: i + 1 })}
                   className={`mx-1 px-3 py-1 rounded ${pagination.page === i + 1
-                      ? 'bg-green-600 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
+                    ? 'bg-green-600 text-white'
+                    : 'text-gray-700 hover:bg-gray-100'
                     }`}
                 >
                   {i + 1}
@@ -570,8 +571,8 @@ const Expenses = () => {
                 onClick={() => setPagination({ ...pagination, page: Math.min(pagination.pages, pagination.page + 1) })}
                 disabled={pagination.page === pagination.pages}
                 className={`mx-1 px-3 py-1 rounded ${pagination.page === pagination.pages
-                    ? 'text-gray-400 cursor-not-allowed'
-                    : 'text-green-600 hover:bg-green-50'
+                  ? 'text-gray-400 cursor-not-allowed'
+                  : 'text-green-600 hover:bg-green-50'
                   }`}
               >
                 Next
