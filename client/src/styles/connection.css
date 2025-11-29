@@ -1,0 +1,19 @@
+.loading-message {
+  color: #6b7280;
+  font-size: 14px;
+  margin-bottom: 12px;
+  padding: 10px;
+  background: #f3f4f6;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.error-message {
+  color: #dc2626;
+  font-size: 14px;
+  margin-bottom: 12px;
+  padding: 10px;
+  background: #fee2e2;
+  border-radius: 6px;
+  text-align: center;
+}

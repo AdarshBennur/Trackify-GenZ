@@ -1,13 +1,23 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import AuthForm from '../components/AuthForm';
 import { motion } from 'framer-motion';
+import { warmBackend } from '../utils/warmup';
+import '../styles/connection.css';
 
 const Signup = () => {
+  // Warm up backend when signup page loads
+  useEffect(() => {
+    const apiUrl = process.env.REACT_APP_API_URL;
+    if (apiUrl) {
+      warmBackend(apiUrl);
+    }
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#F4F1EB] flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5 }}
@@ -35,7 +45,7 @@ const Signup = () => {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-[#F8F6F0] py-8 px-4 shadow-luxe rounded-xl border border-[#F4F1EB] sm:px-10">
           <AuthForm mode="signup" />
-          
+
           <div className="mt-6">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">

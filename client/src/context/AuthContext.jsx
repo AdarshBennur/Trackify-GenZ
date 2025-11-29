@@ -1,6 +1,6 @@
 import React, { createContext, useReducer, useContext, useEffect } from 'react';
-import api from '../utils/api';
 import axios from 'axios';
+import { requestWithRetry } from '../utils/apiClient';
 
 // Create context
 export const AuthContext = createContext();
@@ -74,13 +74,16 @@ export const AuthProvider = ({ children }) => {
   const loadUser = async () => {
     // Check for token in local storage
     const token = localStorage.getItem('token');
-    
+
     if (token) {
       setAuthToken(token);
-      
+
       try {
-        const res = await api.get('/auth/me');
-        
+        const res = await requestWithRetry({
+          url: '/auth/me',
+          method: 'GET'
+        });
+
         dispatch({
           type: 'USER_LOADED',
           payload: res.data.data
@@ -102,22 +105,26 @@ export const AuthProvider = ({ children }) => {
   const loginAsGuest = async () => {
     try {
       // Use the regular login endpoint with guest credentials
-      const res = await api.post('/auth/login', { 
-        email: 'guest@demo.com', 
-        password: 'guest123' 
+      const res = await requestWithRetry({
+        url: '/auth/login',
+        method: 'POST',
+        data: {
+          email: 'guest@demo.com',
+          password: 'guest123'
+        }
       });
-      
+
       dispatch({
         type: 'LOGIN_SUCCESS',
         payload: res.data.user
       });
-      
+
       setAuthToken(res.data.token);
       return res.data;
     } catch (err) {
       // If the login fails, create a guest user locally as fallback
       console.log('Using local guest login fallback');
-      
+
       // Create a guest token and user object
       const guestUser = {
         id: 'guest-user',
@@ -125,10 +132,10 @@ export const AuthProvider = ({ children }) => {
         email: 'guest@demo.com',
         role: 'guest'
       };
-      
+
       // Store in localStorage to persist across page refreshes
       localStorage.setItem('guestMode', 'true');
-      
+
       dispatch({
         type: 'GUEST_LOGIN',
         payload: guestUser
@@ -140,65 +147,73 @@ export const AuthProvider = ({ children }) => {
   const register = async (formData) => {
     try {
       console.log('Attempting to register new user:', { ...formData, password: '[HIDDEN]' });
-      
+
       // Try /auth/register endpoint first, fallback to /auth/signup if needed
       let res;
       try {
         // Add more detailed logging
         console.log('Sending registration request to /auth/register endpoint...');
-        res = await api.post('/auth/register', formData);
+        res = await requestWithRetry({
+          url: '/auth/register',
+          method: 'POST',
+          data: formData
+        });
         console.log('Registration successful with /auth/register endpoint');
       } catch (err) {
         console.log('Registration at /auth/register failed, trying /auth/signup');
         console.log('Error details:', err.response?.data || err.message);
-        
+
         // Try the alternative endpoint
-        res = await api.post('/auth/signup', formData);
+        res = await requestWithRetry({
+          url: '/auth/signup',
+          method: 'POST',
+          data: formData
+        });
         console.log('Registration successful with /auth/signup endpoint');
       }
-      
+
       console.log('Registration successful, user created in MongoDB');
-      
+
       // Log the returned data (without sensitive info)
-      console.log('Server response:', { 
+      console.log('Server response:', {
         success: res.data.success,
         user: res.data.user,
         token: res.data.token ? '[TOKEN EXISTS]' : '[NO TOKEN]'
       });
-      
+
       // Update auth state
       dispatch({
         type: 'REGISTER_SUCCESS',
         payload: res.data.user
       });
-      
+
       // Store the token for authenticated requests
       setAuthToken(res.data.token);
-      
+
       return res.data;
     } catch (err) {
       // Handle MongoDB connection errors or other server issues
-      const errorMessage = err.response?.data?.message || 
-                          err.response?.data?.errors?.[0]?.msg || 
-                          'Registration failed';
-      
+      const errorMessage = err.response?.data?.message ||
+        err.response?.data?.errors?.[0]?.msg ||
+        'Registration failed';
+
       console.error('Registration error:', errorMessage);
-      
+
       // Provide more specific error messages based on the server response
       let displayError = errorMessage;
-      
+
       if (err.response?.status === 500) {
         displayError = 'Server error. Please try again later.';
         if (err.response?.data?.message?.includes('Database connection')) {
           displayError = 'Database connection error. Please try again later.';
         }
       }
-      
+
       dispatch({
         type: 'REGISTER_FAIL',
         payload: displayError
       });
-      
+
       throw err;
     }
   };
@@ -206,26 +221,30 @@ export const AuthProvider = ({ children }) => {
   // Login user
   const login = async (formData) => {
     try {
-      const res = await api.post('/auth/login', formData);
-      
+      const res = await requestWithRetry({
+        url: '/auth/login',
+        method: 'POST',
+        data: formData
+      });
+
       dispatch({
         type: 'LOGIN_SUCCESS',
         payload: res.data.user
       });
-      
+
       setAuthToken(res.data.token);
-      
+
       return res.data;
     } catch (err) {
-      const errorMessage = err.response?.data?.message || 
-                          err.response?.data?.errors?.[0]?.msg || 
-                          'Login failed';
-      
+      const errorMessage = err.response?.data?.message ||
+        err.response?.data?.errors?.[0]?.msg ||
+        'Login failed';
+
       dispatch({
         type: 'LOGIN_FAIL',
         payload: errorMessage
       });
-      
+
       throw err;
     }
   };
@@ -235,15 +254,18 @@ export const AuthProvider = ({ children }) => {
     try {
       // Only call the logout endpoint if not in guest mode
       if (!localStorage.getItem('guestMode')) {
-        await api.get('/auth/logout');
+        await requestWithRetry({
+          url: '/auth/logout',
+          method: 'GET'
+        });
       }
     } catch (err) {
       console.error('Logout error:', err);
     }
-    
+
     // Clear guest mode flag
     localStorage.removeItem('guestMode');
-    
+
     setAuthToken(null);
     dispatch({ type: 'LOGOUT' });
   };
@@ -268,7 +290,7 @@ export const AuthProvider = ({ children }) => {
         email: 'guest@example.com',
         role: 'guest'
       };
-      
+
       dispatch({
         type: 'GUEST_LOGIN',
         payload: guestUser
