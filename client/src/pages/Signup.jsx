@@ -8,6 +8,7 @@ import '../styles/connection.css';
 import Logo from '../assets/logo/logo.svg';
 import { GoogleLogin } from '@react-oauth/google';
 import { requestWithRetry } from '../utils/apiClient';
+import { handleGoogleCredential } from '../utils/googleAuth';
 
 const Signup = () => {
   const [googleLoading, setGoogleLoading] = React.useState(false);
@@ -24,17 +25,9 @@ const Signup = () => {
   const handleGoogleSuccess = async (credentialResponse) => {
     setGoogleLoading(true);
     try {
-      const res = await requestWithRetry({
-        url: '/auth/google',
-        method: 'POST',
-        data: { credential: credentialResponse.credential }
-      });
-
-      toast.success('Successfully signed up with Google!');
-      navigate('/dashboard');
+      await handleGoogleCredential(credentialResponse.credential);
     } catch (err) {
       console.error('Google signup error:', err);
-      toast.error('Google signup failed. Server might be warming up, please try again.');
     } finally {
       setGoogleLoading(false);
     }
