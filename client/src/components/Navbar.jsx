@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { Disclosure, Menu, Transition } from '@headlessui/react';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 import { UserCircleIcon } from '@heroicons/react/24/solid';
+import Logo from '../assets/logo/logo.svg';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(' ');
@@ -13,9 +14,9 @@ const Navbar = () => {
   // For demo purposes, hardcode isAuthenticated to true
   const { user, logout } = useAuth();
   const isAuthenticated = true; // Force true for demo
-  
+
   console.log("Navbar Auth Status:", { isAuthenticated, user });
-  
+
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -55,10 +56,8 @@ const Navbar = () => {
               <div className="flex">
                 <div className="flex flex-shrink-0 items-center">
                   <Link to="/" className="flex items-center">
-                    <div className="h-8 w-8 bg-[#D4AF37] rounded-full flex items-center justify-center mr-2">
-                      <span className="text-white font-bold text-sm">₹</span>
-                    </div>
-                    <span className="text-xl font-bold text-[#2E8B57]">Trackify <span className="text-[#D4AF37]">GenZ</span></span>
+                    <img src={Logo} alt="MintFlow Logo" className="h-10 w-10 mr-3" />
+                    <span className="text-xl font-bold text-[#2E8B57]">Mint<span className="text-[#D4AF37]">Flow</span></span>
                   </Link>
                 </div>
                 <div className="hidden sm:ml-6 sm:flex sm:space-x-8">

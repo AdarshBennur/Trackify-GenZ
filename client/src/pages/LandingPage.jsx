@@ -9,6 +9,7 @@ import {
   UserGroupIcon,
   DevicePhoneMobileIcon,
 } from '@heroicons/react/24/outline';
+import Logo from '../assets/logo/logo.svg';
 
 // Animation variants
 const containerVariants = {
@@ -35,9 +36,9 @@ const itemVariants = {
 // Logo animation variants - static variants without animation
 const logoVariants = {
   hidden: { opacity: 0 },
-  visible: { 
+  visible: {
     opacity: 1,
-    transition: { 
+    transition: {
       duration: 0.8
     }
   }
@@ -46,7 +47,7 @@ const logoVariants = {
 // Static variant for coin
 const coinVariants = {
   hidden: { opacity: 0 },
-  visible: { 
+  visible: {
     opacity: 1,
     transition: {
       duration: 0.5
@@ -60,18 +61,18 @@ const LandingPage = () => {
     // Direct DOM manipulation to ensure button works
     setTimeout(() => {
       const bottomButton = document.getElementById('bottomTrackExpenseButton');
-      
+
       if (bottomButton) {
         bottomButton.addEventListener('click', () => {
           window.location.replace('/dashboard');
         });
       }
-      
+
       // Global click handler as final fallback
       document.addEventListener('click', (e) => {
         // Check if clicked element contains the relevant text
-        if (e.target && e.target.textContent && 
-            e.target.textContent.trim() === 'Track Your Expense') {
+        if (e.target && e.target.textContent &&
+          e.target.textContent.trim() === 'Track Your Expense') {
           console.log('Global click handler detected Track Your Expense button click');
           window.location.href = '/dashboard';
         }
@@ -127,20 +128,10 @@ const LandingPage = () => {
           <div className="flex justify-between items-center py-4">
             {/* Logo & Name */}
             <div className="flex items-center">
-              <motion.div
-                initial="hidden"
-                animate="visible"
-                variants={logoVariants}
-                className="h-10 w-10 mr-3 bg-[#D4AF37] rounded-full flex items-center justify-center overflow-hidden"
-              >
-                <motion.div variants={coinVariants} className="flex flex-col items-center">
-                  <motion.span className="text-white font-bold text-xl">₹</motion.span>
-                  <motion.div className="w-5 h-1 bg-white rounded-full mt-1"></motion.div>
-                </motion.div>
-              </motion.div>
-              <span className="text-xl font-bold text-[#2E8B57]">Trackify <span className="text-[#D4AF37]">GenZ</span></span>
+              <img src={Logo} alt="MintFlow Logo" className="h-10 w-10 mr-3" />
+              <span className="text-xl font-bold text-[#2E8B57]">Mint<span className="text-[#D4AF37]">Flow</span></span>
             </div>
-            
+
             {/* Auth Links */}
             <div className="flex items-center space-x-4">
               <Link to="/login" className="text-[#A0A0A0] hover:text-gray-900 font-medium">
@@ -210,11 +201,11 @@ const LandingPage = () => {
                     Take Control of Your <span className="text-[#2E8B57]">Financial Life</span>
                   </h1>
                   <p className="mt-6 text-lg leading-8 text-[#A0A0A0]">
-                    Trackify GenZ helps you monitor your spending, set budgets, and achieve your
+                    MintFlow helps you monitor your spending, set budgets, and achieve your
                     financial goals with an easy-to-use interface.
                   </p>
                 </motion.div>
-                
+
                 {/* Right side: Animated dashboard visualization */}
                 <motion.div
                   initial={{ opacity: 0, x: 50 }}
@@ -224,29 +215,29 @@ const LandingPage = () => {
                 >
                   <div className="relative mx-auto max-w-lg">
                     {/* Background decorative elements */}
-                    <motion.div 
+                    <motion.div
                       className="absolute -top-6 -right-6 w-32 h-32 bg-[#2E8B57] opacity-10 rounded-full"
-                      animate={{ 
+                      animate={{
                         scale: [1, 1.1, 1],
                       }}
-                      transition={{ 
-                        duration: 6, 
+                      transition={{
+                        duration: 6,
                         repeat: Infinity,
-                        ease: "easeInOut" 
-                      }}  
+                        ease: "easeInOut"
+                      }}
                     />
-                    <motion.div 
+                    <motion.div
                       className="absolute -bottom-6 -left-6 w-24 h-24 bg-[#D4AF37] opacity-10 rounded-full"
-                      animate={{ 
+                      animate={{
                         scale: [1, 1.15, 1],
                       }}
-                      transition={{ 
-                        duration: 7, 
+                      transition={{
+                        duration: 7,
                         repeat: Infinity,
-                        ease: "easeInOut" 
-                      }}  
+                        ease: "easeInOut"
+                      }}
                     />
-                    
+
                     {/* Dashboard visualization */}
                     <motion.div
                       className="relative bg-white rounded-2xl shadow-luxe overflow-hidden p-5"
@@ -262,24 +253,24 @@ const LandingPage = () => {
                           <h3 className="ml-2 font-semibold text-gray-800">Financial Dashboard</h3>
                         </div>
                         <div className="flex space-x-2">
-                          <motion.div 
+                          <motion.div
                             className="w-2 h-2 rounded-full bg-red-400"
                             animate={{ opacity: [0.5, 1, 0.5] }}
                             transition={{ duration: 2, repeat: Infinity }}
                           />
-                          <motion.div 
+                          <motion.div
                             className="w-2 h-2 rounded-full bg-yellow-400"
                             animate={{ opacity: [0.6, 1, 0.6] }}
                             transition={{ duration: 2, repeat: Infinity, delay: 0.3 }}
                           />
-                          <motion.div 
-                            className="w-2 h-2 rounded-full bg-green-400" 
+                          <motion.div
+                            className="w-2 h-2 rounded-full bg-green-400"
                             animate={{ opacity: [0.7, 1, 0.7] }}
                             transition={{ duration: 2, repeat: Infinity, delay: 0.6 }}
                           />
                         </div>
                       </div>
-                      
+
                       {/* Chart visualization */}
                       <div className="mb-6">
                         <h4 className="text-sm font-medium text-gray-500 mb-3">Monthly Spending</h4>
@@ -290,7 +281,7 @@ const LandingPage = () => {
                               className="w-full bg-gradient-to-t from-[#2E8B57] to-[#D4AF37] rounded-t-sm"
                               initial={{ height: 0 }}
                               animate={{ height: `${height}%` }}
-                              transition={{ 
+                              transition={{
                                 duration: 1,
                                 delay: index * 0.05,
                                 ease: "easeOut"
@@ -305,51 +296,51 @@ const LandingPage = () => {
                           <span>Dec</span>
                         </div>
                       </div>
-                      
+
                       {/* Financial summary */}
                       <div className="grid grid-cols-3 gap-3 mb-4">
-                        <motion.div 
+                        <motion.div
                           className="bg-[#F8F6F0] p-3 rounded-lg"
                           whileHover={{ y: -2 }}
                         >
                           <p className="text-xs text-gray-500">Income</p>
                           <p className="text-lg font-semibold text-[#2E8B57]">₹5,240</p>
-                          <motion.p 
+                          <motion.p
                             className="text-xs text-green-500"
                             animate={{ opacity: [0.7, 1, 0.7] }}
                             transition={{ duration: 2, repeat: Infinity }}
                           >+12.5%</motion.p>
                         </motion.div>
-                        <motion.div 
+                        <motion.div
                           className="bg-[#F8F6F0] p-3 rounded-lg"
                           whileHover={{ y: -2 }}
                         >
                           <p className="text-xs text-gray-500">Expenses</p>
                           <p className="text-lg font-semibold text-[#D4AF37]">₹3,120</p>
-                          <motion.p 
+                          <motion.p
                             className="text-xs text-red-500"
                             animate={{ opacity: [0.7, 1, 0.7] }}
                             transition={{ duration: 2, repeat: Infinity, delay: 0.3 }}
                           >-5.3%</motion.p>
                         </motion.div>
-                        <motion.div 
+                        <motion.div
                           className="bg-[#F8F6F0] p-3 rounded-lg"
                           whileHover={{ y: -2 }}
                         >
                           <p className="text-xs text-gray-500">Savings</p>
                           <p className="text-lg font-semibold text-purple-600">₹2,120</p>
-                          <motion.p 
+                          <motion.p
                             className="text-xs text-green-500"
                             animate={{ opacity: [0.7, 1, 0.7] }}
                             transition={{ duration: 2, repeat: Infinity, delay: 0.6 }}
                           >+18.2%</motion.p>
                         </motion.div>
                       </div>
-                      
+
                       {/* Recent transactions */}
                       <div>
                         <h4 className="text-sm font-medium text-gray-500 mb-2">Recent Transactions</h4>
-                        <motion.div 
+                        <motion.div
                           className="flex justify-between py-2 border-b border-gray-100 items-center"
                           whileHover={{ x: 3 }}
                         >
@@ -361,7 +352,7 @@ const LandingPage = () => {
                           </div>
                           <span className="text-xs font-medium text-green-600">+₹3,200</span>
                         </motion.div>
-                        <motion.div 
+                        <motion.div
                           className="flex justify-between py-2 border-b border-gray-100 items-center"
                           whileHover={{ x: 3 }}
                         >
@@ -402,37 +393,37 @@ const LandingPage = () => {
             >
               <dl className="grid max-w-xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-3">
                 {features.map((feature) => (
-                  <motion.div 
-                    key={feature.name} 
+                  <motion.div
+                    key={feature.name}
                     variants={itemVariants}
                     className="bg-white p-8 rounded-xl shadow-md border border-[#F4F1EB] flex flex-col relative overflow-hidden group hover:shadow-xl transition-all duration-300"
-                    whileHover={{ 
+                    whileHover={{
                       y: -5,
                       transition: { duration: 0.2 }
                     }}
                   >
                     {/* Gold accent line */}
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#D4AF37] to-[#F5E7A3]"></div>
-                    
+
                     {/* Background decorative element */}
                     <div className="absolute -bottom-10 -right-10 w-40 h-40 rounded-full bg-[#F8F6F0] opacity-0 group-hover:opacity-30 transition-opacity duration-300"></div>
-                    
+
                     <dt className="text-lg font-semibold leading-7 text-gray-900 flex items-center">
                       <div className="relative mb-6 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#C39E2D] shadow-inner">
                         <feature.icon className="h-6 w-6 text-white" aria-hidden="true" />
                         <div className="absolute -bottom-2 -right-2 w-3 h-3 bg-[#2E8B57] rounded-full"></div>
                       </div>
                     </dt>
-                    
+
                     <dt className="text-xl font-bold leading-7 text-gray-900 mb-3">
                       {feature.name}
                     </dt>
-                    
+
                     <dd className="mt-1 flex flex-auto flex-col text-base leading-7 text-[#A0A0A0]">
                       <p className="flex-auto">{feature.description}</p>
                       <div className="mt-4 h-0.5 w-12 bg-gradient-to-r from-[#2E8B57] to-transparent rounded-full"></div>
                     </dd>
-                    
+
                     {/* Subtle hover effect indicator */}
                     <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                       <svg className="h-5 w-5 text-[#D4AF37]" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">

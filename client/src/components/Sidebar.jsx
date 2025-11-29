@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { 
-  HomeIcon, 
+import {
+  HomeIcon,
   ChartBarIcon,
   CurrencyDollarIcon,
   BanknotesIcon,
@@ -15,6 +15,7 @@ import {
   Bars3Icon,
   XMarkIcon
 } from '@heroicons/react/24/outline';
+import Logo from '../assets/logo/logo.svg';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(' ');
@@ -25,7 +26,7 @@ const Sidebar = () => {
   const [isMobile, setIsMobile] = useState(false);
   const { user, logout } = useAuth();
   const isAuthenticated = true; // Force true for demo
-  
+
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -34,7 +35,7 @@ const Sidebar = () => {
     const handleResize = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
-      
+
       // Auto-close sidebar on mobile, auto-open on desktop
       if (mobile) {
         setIsOpen(false);
@@ -48,7 +49,7 @@ const Sidebar = () => {
 
     // Add event listener
     window.addEventListener('resize', handleResize);
-    
+
     // Cleanup
     return () => {
       window.removeEventListener('resize', handleResize);
@@ -107,17 +108,15 @@ const Sidebar = () => {
 
         {/* Mobile Logo */}
         <Link to="/" className="flex items-center" onClick={handleLinkClick}>
-          <div className="h-8 w-8 bg-[#D4AF37] rounded-full flex items-center justify-center mr-2">
-            <span className="text-white font-bold text-sm">₹</span>
-          </div>
+          <img src={Logo} alt="MintFlow Logo" className="h-8 w-8 mr-2" />
           <span className="text-xl font-bold text-[#2E8B57]">
-            Trackify <span className="text-[#D4AF37]">GenZ</span>
+            Mint<span className="text-[#D4AF37]">Flow</span>
           </span>
         </Link>
 
         {/* Mobile Profile Button */}
-        <Link 
-          to="/profile" 
+        <Link
+          to="/profile"
           className="p-2 rounded-md text-[#A0A0A0] hover:text-[#2E8B57] hover:bg-[#F8F6F0] transition-all duration-300"
           onClick={handleLinkClick}
         >
@@ -127,7 +126,7 @@ const Sidebar = () => {
 
       {/* Mobile Overlay - close sidebar when clicking outside */}
       {isOpen && isMobile && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-20 backdrop-blur-sm z-40 md:hidden transition-opacity duration-300"
           onClick={() => setIsOpen(false)}
           aria-hidden="true"
@@ -135,7 +134,7 @@ const Sidebar = () => {
       )}
 
       {/* Sidebar */}
-      <aside 
+      <aside
         className={classNames(
           // Position and size
           'fixed top-0 left-0 h-full w-64 bg-[#F8F6F0] shadow-lg border-r border-[#F4F1EB] z-45',
@@ -154,22 +153,20 @@ const Sidebar = () => {
         {/* Desktop Logo - hidden on mobile */}
         <div className="hidden md:flex h-16 items-center px-6 border-b border-[#F4F1EB] bg-[#F8F6F0]">
           <Link to="/" className="flex items-center">
-            <div className="h-8 w-8 bg-[#D4AF37] rounded-full flex items-center justify-center mr-3">
-              <span className="text-white font-bold text-sm">₹</span>
-            </div>
+            <img src={Logo} alt="MintFlow Logo" className="h-10 w-10 mr-3" />
             <span className="text-xl font-bold text-[#2E8B57]">
-              Trackify <span className="text-[#D4AF37]">GenZ</span>
+              Mint<span className="text-[#D4AF37]">Flow</span>
             </span>
           </Link>
         </div>
-        
+
         {/* Navigation Links */}
         <nav className="flex-1 pt-6 pb-4 overflow-y-auto">
           <div className="px-3 space-y-2">
             {navigationLinks.map((item) => {
               const Icon = item.icon;
               const isActive = isActivePath(item.href);
-              
+
               return (
                 <Link
                   key={item.name}
@@ -189,8 +186,8 @@ const Sidebar = () => {
                   <Icon
                     className={classNames(
                       'mr-3 flex-shrink-0 h-5 w-5 transition-colors duration-300',
-                      isActive 
-                        ? 'text-[#D4AF37]' 
+                      isActive
+                        ? 'text-[#D4AF37]'
                         : 'text-[#A0A0A0] group-hover:text-[#D4AF37]'
                     )}
                     aria-hidden="true"
@@ -201,11 +198,11 @@ const Sidebar = () => {
             })}
           </div>
         </nav>
-        
+
         {/* User Profile and Logout */}
         <div className="border-t border-[#F4F1EB] p-4">
-          <Link 
-            to="/profile" 
+          <Link
+            to="/profile"
             onClick={handleLinkClick}
             className={classNames(
               // Base styles - same as navigation buttons
@@ -218,18 +215,18 @@ const Sidebar = () => {
               'focus:outline-none focus:ring-2 focus:ring-[#D4AF37] focus:ring-opacity-50'
             )}
           >
-            <UserCircleIcon 
+            <UserCircleIcon
               className={classNames(
                 'mr-3 flex-shrink-0 h-5 w-5 transition-colors duration-300',
-                isActivePath('/profile') 
-                  ? 'text-[#D4AF37]' 
+                isActivePath('/profile')
+                  ? 'text-[#D4AF37]'
                   : 'text-[#A0A0A0] group-hover:text-[#D4AF37]'
               )}
             />
             Profile
           </Link>
-          
-          <button 
+
+          <button
             onClick={handleLogout}
             className={classNames(
               // Base styles - same as navigation buttons
@@ -240,17 +237,17 @@ const Sidebar = () => {
               'focus:outline-none focus:ring-2 focus:ring-[#D4AF37] focus:ring-opacity-50'
             )}
           >
-            <svg 
+            <svg
               className="mr-3 flex-shrink-0 h-5 w-5 text-[#A0A0A0] group-hover:text-[#D4AF37] transition-colors duration-300"
-              fill="none" 
-              viewBox="0 0 24 24" 
+              fill="none"
+              viewBox="0 0 24 24"
               stroke="currentColor"
             >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" 
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
               />
             </svg>
             Log out
