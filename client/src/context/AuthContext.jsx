@@ -316,6 +316,38 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  // Listen for Google auth success events
+  useEffect(() => {
+    const handleAuthSuccess = async (event) => {
+      console.log('AuthContext received auth success event');
+
+      try {
+        // Token already set in axios header by setToken()
+        // Load user data to sync state
+        const res = await requestWithRetry({
+          url: '/auth/me',
+          method: 'GET'
+        });
+
+        dispatch({
+          type: 'USER_LOADED',
+          payload: res.data.data || res.data
+        });
+
+        console.log('User loaded after Google auth');
+      } catch (err) {
+        console.error('Failed to load user after Google auth:', err);
+        dispatch({ type: 'AUTH_ERROR' });
+      }
+    };
+
+    window.addEventListener('app:auth-success', handleAuthSuccess);
+
+    return () => {
+      window.removeEventListener('app:auth-success', handleAuthSuccess);
+    };
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
