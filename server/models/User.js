@@ -45,6 +45,11 @@ const UserSchema = new mongoose.Schema({
     enum: ['user', 'admin', 'guest'],
     default: 'user'
   },
+  googleId: {
+    type: String,
+    unique: true,
+    sparse: true  // Allows null values while maintaining uniqueness
+  },
   currencyPreference: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Currency'
@@ -56,39 +61,39 @@ const UserSchema = new mongoose.Schema({
 }, schemaOptions);
 
 // Set a pre-save middleware to ensure username/name compatibility
-UserSchema.pre('save', async function(next) {
+UserSchema.pre('save', async function (next) {
   console.log(`Pre-save middleware for user: ${this.email}`.cyan);
-  
+
   // If name is provided but username is not, use name as username
   if (this.name && !this.username) {
     this.username = this.name;
   }
-  
+
   // If username is provided but name is not, use username as name
   if (this.username && !this.name) {
     this.name = this.username;
   }
-  
+
   next();
 });
 
 // Hash password before saving
-UserSchema.pre('save', async function(next) {
+UserSchema.pre('save', async function (next) {
   try {
     // Only hash the password if it has been modified (or is new)
     if (!this.isModified('password')) {
       console.log('Password not modified, skipping hashing');
       return next();
     }
-    
+
     console.log(`Hashing password for user: ${this.email}`);
-    
+
     // Generate salt with 10 rounds
     const salt = await bcrypt.genSalt(10);
-    
+
     // Hash password with salt
     this.password = await bcrypt.hash(this.password, salt);
-    
+
     console.log('Password hashed successfully');
     next();
   } catch (error) {
@@ -98,21 +103,21 @@ UserSchema.pre('save', async function(next) {
 });
 
 // Log after successful save
-UserSchema.post('save', function(doc) {
+UserSchema.post('save', function (doc) {
   console.log(`User ${doc.email} saved successfully with ID: ${doc._id}`.green);
 });
 
 // Sign JWT and return
-UserSchema.methods.getSignedJwtToken = function() {
+UserSchema.methods.getSignedJwtToken = function () {
   try {
     const jwtSecret = process.env.JWT_SECRET || 'trackify-secret-key';
-    
+
     if (!process.env.JWT_SECRET) {
       console.warn('JWT_SECRET not defined in environment variables, using fallback secret');
     }
-    
+
     const jwtExpire = process.env.JWT_EXPIRE || '30d';
-    
+
     return jwt.sign(
       { id: this._id },
       jwtSecret,
@@ -125,7 +130,7 @@ UserSchema.methods.getSignedJwtToken = function() {
 };
 
 // Match user entered password to hashed password in database
-UserSchema.methods.matchPassword = async function(enteredPassword) {
+UserSchema.methods.matchPassword = async function (enteredPassword) {
   try {
     return await bcrypt.compare(enteredPassword, this.password);
   } catch (error) {
