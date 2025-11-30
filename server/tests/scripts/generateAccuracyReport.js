@@ -37,8 +37,8 @@ results.forEach(result => {
     const amountMatch = Math.abs(result.amount - expected.amount) < 0.01;
     const directionMatch = result.direction === expected.direction;
 
-    // Apply merchant matching
-    const { vendor: matchedVendor } = matchVendor(result.rawVendor);
+    // Apply merchant matching (same as controller)
+    const { vendor: matchedVendor, confidence: vendorConfidence } = matchVendor(result.rawVendor);
     const vendorMatch = matchedVendor.toLowerCase() === expected.vendor.toLowerCase();
 
     if (amountMatch) correctAmounts++;
@@ -53,6 +53,8 @@ results.forEach(result => {
         parsed_direction: result.direction,
         expected_vendor: expected.vendor,
         parsed_vendor: matchedVendor,
+        raw_vendor: result.rawVendor,
+        vendor_confidence: vendorConfidence,
         confidence: result.confidence,
         pass: amountMatch && directionMatch && vendorMatch
     });
@@ -75,10 +77,10 @@ console.log(`- Vendor >= 80%: ${vendorAccuracy >= 80 ? '✅ PASS' : '❌ FAIL'}\
 
 // Generate CSV
 console.log('\n--- CSV Report ---');
-console.log('messageId,expected_amount,parsed_amount,expected_direction,parsed_direction,expected_vendor,parsed_vendor,confidence,pass');
+console.log('messageId,expected_amount,parsed_amount,expected_direction,parsed_direction,expected_vendor,parsed_vendor,raw_vendor,vendor_conf,confidence,pass');
 
 detailedResults.forEach(r => {
-    console.log(`${r.messageId},${r.expected_amount},${r.parsed_amount},${r.expected_direction},${r.parsed_direction},${r.expected_vendor},${r.parsed_vendor},${r.confidence},${r.pass}`);
+    console.log(`${r.messageId},${r.expected_amount},${r.parsed_amount},${r.expected_direction},${r.parsed_direction},${r.expected_vendor},${r.parsed_vendor},${r.raw_vendor},${r.vendor_confidence},${r.confidence},${r.pass}`);
 });
 
 console.log('\n--- End Report ---');
