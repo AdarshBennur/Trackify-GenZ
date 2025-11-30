@@ -1,32 +1,78 @@
 /**
- * Transaction Parser Service
- * Extracts structured transaction data from email bodies using regex
+ * Transaction Parser Service - IMPROVED
+ * Robust handling of Gmail API format, base64 decoding, HTML stripping
  */
 
-// Regex patterns from requirements
+// Improved regex patterns
 const PATTERNS = {
-    amount: /(?:INR|Rs\.?|₹)\s?([0-9,]+(?:\.[0-9]{1,2})?)/gi,
-    debitKeywords: /\b(debited|paid|payment of|sent|spent|withdrawn|paid to)\b/i,
-    creditKeywords: /\b(credited|deposit|received|refund|cashback)\b/i,
+    // Robust amount extraction
+    amount: /(?:INR|Rs\.?|₹)?\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{1,2})?|[0-9]+(?:\.[0-9]{1,2})?)/gi,
+
+    // Weighted direction keywords
+    debitKeywords: /\b(debited|paid|payment of|sent|withdrawn|spent)\b/gi,
+    creditKeywords: /\b(credited|deposit|received|refund|cashback)\b/gi,
+
+    // NEW: Enhanced merchant extraction patterns
+    upiVendor: /(?:by\s+UPI[-\s]?|UPI\s+payment\s+to\s+)([A-Za-z0-9 &.\-]{3,80})/i,
+    paymentTo: /(?:payment\s+to|paid\s+to|paid\s+for)\s+([A-Za-z0-9 &.\-]{3,80})/i,
+    subscription: /\b(subscription\s+renewed|auto-?renew|renewal\s+of)\b/i,
+    autopay: /\b(auto-?pay|recurring|monthly\s+subscription|standing\s+instruction)\b/i,
+    walletTransfer: /\b(wallet\s+transfer|transferred\s+to\s+wallet)\b/i,
+
+    // Original merchant hint with stop words
+    merchantHint: /(?:\b(?:to|at|from|via|by)\b)\s+(.{3,60}?)(?=\s+(?:on|ref|txn|utr|order|\d|₹|INR|Rs\.|$))/i,
+
     upiVpa: /([\w.-]+@[\w.-]+)/g,
     accountLast4: /(?:a\/c|acct|ac|a\/c no)\s*[xX\*]*\s*([0-9]{2,4})/i,
     failedTransaction: /\b(failed|declined|unsuccessful|cancelled|blocked)\b/i,
     refund: /\b(refund|reversal|amount reversed|credited back)\b/i,
-    merchantHint: /(?:to|at|on)\s+([A-Z0-9 &.\-]{3,60})/i,
     otpFilter: /\b(OTP|one time password|verification code|security code)\b/i,
-    totalKeyword: /\btotal\b/i
+
+    // Multi-amount keywords
+    totalKeywords: /\b(total|net|amount|paid|debited|received)\b/i,
+
+    // Cleanup patterns
+    cleanupSuffix: /(on\s+\d{1,2}[\/-]\d{1,2}|\bref[:\s]|txn[:\s]|utr[:\s]).*$/i,
+    htmlTags: /<[^>]*>/g,
+    htmlEntities: /&[a-z]+;/gi
+};
+
+// Known merchant domains
+const MERCHANT_DOMAINS = {
+    'paytm.com': 'Paytm',
+    'phonepe.com': 'PhonePe',
+    'gpay': 'Google Pay',
+    'amazonpay': 'Amazon',
+    'amazon.in': 'Amazon',
+    'flipkart.com': 'Flipkart',
+    'swiggy.com': 'Swiggy',
+    'zomato.com': 'Zomato',
+    'uber.com': 'Uber',
+    'olacabs.com': 'Ola',
+    'netflix.com': 'Netflix',
+    'spotify.com': 'Spotify',
+    'myntra.com': 'Myntra',
+    'bigbasket.com': 'BigBasket',
+    'bookmyshow.com': 'BookMyShow',
+    'razorpay.com': 'Razorpay',
+    'cred.club': 'CRED'
 };
 
 /**
  * Parse email message and extract transaction data
- * @param {Object} message - Gmail API message object
- * @returns {Object|null} - Parsed transaction or null if invalid
  */
 function parseEmailMessage(message) {
     const { id, snippet, payload, internalDate } = message;
 
-    // Extract email body
-    const body = extractBody(payload);
+    // Extract email body - prefer snippet first, then decode payload
+    let body = snippet || '';
+    if (!body && payload) {
+        body = extractBody(payload);
+    }
+
+    // Normalize whitespace
+    body = body.replace(/\s+/g, ' ').trim();
+
     const subject = getHeader(payload, 'Subject') || '';
     const from = getHeader(payload, 'From') || '';
 
@@ -42,46 +88,49 @@ function parseEmailMessage(message) {
         return null;
     }
 
-    // Extract transaction details
+    // Extract amounts
     const amounts = extractAmounts(body);
     if (amounts.length === 0) {
         console.log(`No amount found in email: ${id}`);
         return null;
     }
 
-    // Determine primary amount (prefer amount near "Total")
-    const amount = selectPrimaryAmount(amounts, body);
+    // Select primary amount
+    const { amount, source } = selectPrimaryAmount(amounts, body);
 
-    // Determine direction (debit or credit)
-    const direction = determineDirection(body);
-    if (!direction) {
+    // Determine direction with sender hints
+    const directionResult = determineDirectionEnhanced(body, subject, from);
+    if (!directionResult.direction) {
         console.log(`Could not determine direction for email: ${id}`);
         return null;
     }
 
-    // Extract merchant/vendor
-    const rawVendor = extractVendor(body, subject);
+    // Extract vendor with fallbacks
+    const rawVendor = extractVendorEnhanced(body, subject, from);
 
     // Extract metadata
     const metadata = {
         vpa: extractVPA(body),
         accountLast4: extractAccountLast4(body),
         originalSubject: subject,
-        senderEmail: from
+        senderEmail: from,
+        amountSource: source,
+        directionConfidence: directionResult.confidence
     };
 
-    // Determine confidence
+    // Calculate confidence
     const confidence = calculateConfidence({
         amounts,
-        direction,
+        direction: directionResult.direction,
         rawVendor,
-        metadata
+        metadata,
+        directionResult
     });
 
     return {
         gmailMessageId: id,
         amount: parseFloat(amount.replace(/,/g, '')),
-        direction,
+        direction: directionResult.direction,
         rawVendor,
         date: new Date(parseInt(internalDate)),
         metadata,
@@ -90,43 +139,86 @@ function parseEmailMessage(message) {
 }
 
 /**
- * Extract email body from payload
+ * Extract email body from payload (robust base64 + HTML handling)
  */
 function extractBody(payload) {
     let body = '';
 
     if (payload.parts) {
-        // Multipart email
+        // Multipart email - prefer text/plain
         for (const part of payload.parts) {
-            if (part.mimeType === 'text/plain' && part.body.data) {
-                body += Buffer.from(part.body.data, 'base64').toString('utf-8');
+            if (part.mimeType === 'text/plain' && part.body && part.body.data) {
+                body += decodeBase64(part.body.data);
+            } else if (part.mimeType === 'text/html' && part.body && part.body.data && !body) {
+                // Fallback to HTML, then strip tags
+                const html = decodeBase64(part.body.data);
+                body += stripHTML(html);
             }
         }
     } else if (payload.body && payload.body.data) {
         // Simple email
-        body = Buffer.from(payload.body.data, 'base64').toString('utf-8');
+        body = decodeBase64(payload.body.data);
+        if (payload.mimeType === 'text/html') {
+            body = stripHTML(body);
+        }
     }
 
     return body;
 }
 
 /**
- * Get header value from payload
+ * Decode base64 (handles URL-safe variants)
+ */
+function decodeBase64(data) {
+    try {
+        // Gmail uses URL-safe base64
+        const normalized = data.replace(/-/g, '+').replace(/_/g, '/');
+        return Buffer.from(normalized, 'base64').toString('utf8');
+    } catch (error) {
+        console.error('Base64 decode error:', error.message);
+        return '';
+    }
+}
+
+/**
+ * Strip HTML tags and decode entities
+ */
+function stripHTML(html) {
+    let text = html;
+
+    // Remove HTML tags
+    text = text.replace(PATTERNS.htmlTags, ' ');
+
+    // Decode common HTML entities
+    text = text.replace(/&nbsp;/g, ' ');
+    text = text.replace(/&amp;/g, '&');
+    text = text.replace(/&lt;/g, '<');
+    text = text.replace(/&gt;/g, '>');
+    text = text.replace(/&quot;/g, '"');
+    text = text.replace(/&#39;/g, "'");
+
+    // Normalize whitespace
+    text = text.replace(/\s+/g, ' ').trim();
+
+    return text;
+}
+
+/**
+ * Get header value
  */
 function getHeader(payload, name) {
-    if (!payload.headers) return null;
+    if (!payload || !payload.headers) return null;
     const header = payload.headers.find(h => h.name === name);
     return header ? header.value : null;
 }
 
 /**
- * Extract all amounts from text
+ * Extract all amounts
  */
 function extractAmounts(text) {
     const matches = [];
     let match;
 
-    // Reset regex
     PATTERNS.amount.lastIndex = 0;
 
     while ((match = PATTERNS.amount.exec(text)) !== null) {
@@ -140,17 +232,16 @@ function extractAmounts(text) {
 }
 
 /**
- * Select primary amount (prefer amount near "Total")
+ * Select primary amount (improved multi-amount handling)
  */
 function selectPrimaryAmount(amounts, text) {
     if (amounts.length === 1) {
-        return amounts[0].value;
+        return { amount: amounts[0].value, source: 'single' };
     }
 
-    // Find "Total" keyword
-    const totalMatch = PATTERNS.totalKeyword.exec(text);
+    // Find amounts near keywords
+    const totalMatch = PATTERNS.totalKeywords.exec(text);
     if (totalMatch) {
-        // Find amount closest to "Total"
         let closest = amounts[0];
         let minDistance = Math.abs(amounts[0].index - totalMatch.index);
 
@@ -162,48 +253,147 @@ function selectPrimaryAmount(amounts, text) {
             }
         }
 
-        return closest.value;
+        return { amount: closest.value, source: 'near_keyword' };
     }
 
-    // Default to largest amount
-    return amounts.reduce((max, curr) => {
+    // Default to largest
+    const largest = amounts.reduce((max, curr) => {
         const maxVal = parseFloat(max.value.replace(/,/g, ''));
         const currVal = parseFloat(curr.value.replace(/,/g, ''));
         return currVal > maxVal ? curr : max;
-    }).value;
+    });
+
+    return { amount: largest.value, source: 'largest' };
 }
 
 /**
- * Determine transaction direction
+ * Enhanced direction detection (sender-based + weighted)
  */
-function determineDirection(text) {
-    const hasDebit = PATTERNS.debitKeywords.test(text);
-    const hasCredit = PATTERNS.creditKeywords.test(text) || PATTERNS.refund.test(text);
+function determineDirectionEnhanced(text, subject, from) {
+    // Check sender domain for hints
+    const lowerFrom = from.toLowerCase();
+    const lowerSubject = subject.toLowerCase();
 
-    if (hasDebit && !hasCredit) return 'debit';
-    if (hasCredit && !hasDebit) return 'credit';
-    if (hasCredit && hasDebit) {
-        // Refund takes precedence
-        if (PATTERNS.refund.test(text)) return 'credit';
+    // If subject explicitly states direction
+    if (lowerSubject.includes('debited') || lowerSubject.includes('payment')) {
+        return { direction: 'debit', confidence: 0.9 };
+    }
+    if (lowerSubject.includes('credited') || lowerSubject.includes('refund') || lowerSubject.includes('reversal')) {
+        return { direction: 'credit', confidence: 0.9 };
     }
 
-    return null; // Ambiguous
+    // NEW: Check for subscription/autopay patterns (always debit)
+    if (PATTERNS.subscription.test(text) || PATTERNS.autopay.test(text)) {
+        return { direction: 'debit', confidence: 0.85 };
+    }
+
+    // NEW: Wallet transfer detection
+    if (PATTERNS.walletTransfer.test(text)) {
+        // Context-dependent: "transferred to wallet" = credit, "transferred from wallet" = debit
+        if (/transferred\s+to\s+wallet/i.test(text)) {
+            return { direction: 'credit', confidence: 0.8 };
+        } else {
+            return { direction: 'debit', confidence: 0.8 };
+        }
+    }
+
+    // Weighted keyword scoring
+    const creditWords = ['credited', 'deposit', 'received', 'refund', 'cashback'];
+    const debitWords = ['debited', 'paid', 'payment of', 'sent', 'withdrawn', 'spent'];
+
+    let creditScore = 0;
+    let debitScore = 0;
+
+    const lowerText = text.toLowerCase();
+
+    creditWords.forEach(word => {
+        const regex = new RegExp(`\\b${word}\\b`, 'g');
+        const matches = lowerText.match(regex);
+        if (matches) creditScore += matches.length * 2;
+    });
+
+    debitWords.forEach(word => {
+        const regex = new RegExp(`\\b${word}\\b`, 'g');
+        const matches = lowerText.match(regex);
+        if (matches) debitScore += matches.length;
+    });
+
+    // Refund bonus
+    if (PATTERNS.refund.test(text)) {
+        creditScore += 5;
+    }
+
+    const totalScore = creditScore - debitScore;
+
+    if (totalScore > 0) {
+        return { direction: 'credit', confidence: Math.min(creditScore / 5, 1.0) };
+    } else if (totalScore < 0) {
+        return { direction: 'debit', confidence: Math.min(debitScore / 5, 1.0) };
+    }
+
+    // Fallback patterns
+    if (/credit of|credited with|credited to/i.test(text)) {
+        return { direction: 'credit', confidence: 0.5 };
+    }
+    if (/debited from|payment of|paid to/i.test(text)) {
+        return { direction: 'debit', confidence: 0.5 };
+    }
+
+    return { direction: null, confidence: 0 };
 }
 
 /**
- * Extract vendor/merchant name
+ * Enhanced vendor extraction with fallbacks
  */
-function extractVendor(body, subject) {
-    // Try merchant hint pattern first
+function extractVendorEnhanced(body, subject, from) {
+    // 1. Try UPI vendor pattern
+    const upiMatch = PATTERNS.upiVendor.exec(body);
+    if (upiMatch) {
+        let vendor = upiMatch[1].trim();
+        vendor = vendor.replace(PATTERNS.cleanupSuffix, '').trim();
+        if (vendor.length >= 3) {
+            return vendor;
+        }
+    }
+
+    // 2. Try payment-to pattern
+    const paymentMatch = PATTERNS.paymentTo.exec(body);
+    if (paymentMatch) {
+        let vendor = paymentMatch[1].trim();
+        vendor = vendor.replace(PATTERNS.cleanupSuffix, '').trim();
+        if (vendor.length >= 3) {
+            return vendor;
+        }
+    }
+
+    // 3. Try merchant hint pattern
     const merchantMatch = PATTERNS.merchantHint.exec(body);
     if (merchantMatch) {
-        return merchantMatch[1].trim();
+        let vendor = merchantMatch[1].trim();
+        // Clean up suffix
+        vendor = vendor.replace(PATTERNS.cleanupSuffix, '').trim();
+        if (vendor.length >= 3) {
+            return vendor;
+        }
     }
 
-    // Fallback to subject line
-    const subjectWords = subject.split(/\s+/).filter(w => w.length > 2);
+    // 4. Try sender domain mapping
+    const lowerFrom = from.toLowerCase();
+    for (const [domain, merchant] of Object.entries(MERCHANT_DOMAINS)) {
+        if (lowerFrom.includes(domain)) {
+            return merchant;
+        }
+    }
+
+    // 5. Subject line tokens (filter stopwords)
+    const stopwords = ['alert', 'notification', 'transaction', 'payment', 'receipt', 'confirmation', 'for', 'the', 'your', 'order', 'ref', 'txn'];
+    const subjectWords = subject
+        .split(/[\s\-:]+/)
+        .filter(w => w.length > 2 && !/^\d+$/.test(w))
+        .filter(w => !stopwords.includes(w.toLowerCase()))
+        .slice(0, 6);
+
     if (subjectWords.length > 0) {
-        // Take first meaningful word
         return subjectWords.slice(0, 3).join(' ');
     }
 
@@ -219,7 +409,7 @@ function extractVPA(text) {
 }
 
 /**
- * Extract account last 4 digits
+ * Extract account last 4
  */
 function extractAccountLast4(text) {
     const match = PATTERNS.accountLast4.exec(text);
@@ -229,20 +419,38 @@ function extractAccountLast4(text) {
 /**
  * Calculate confidence score
  */
-function calculateConfidence({ amounts, direction, rawVendor, metadata }) {
+function calculateConfidence({ amounts, direction, rawVendor, metadata, directionResult }) {
     let score = 0;
 
-    // Single amount = higher confidence
-    if (amounts.length === 1) score += 30;
+    // Amount confidence
+    if (amounts.length === 1) {
+        score += 30;
+    } else if (metadata.amountSource === 'near_keyword') {
+        score += 20;
+    } else {
+        score += 10;
+    }
 
-    // Clear direction = higher confidence
-    if (direction) score += 30;
+    // Direction confidence
+    if (directionResult.confidence >= 0.8) {
+        score += 30;
+    } else if (directionResult.confidence >= 0.5) {
+        score += 20;
+    } else {
+        score += 10;
+    }
 
-    // Has VPA or account = higher confidence
-    if (metadata.vpa || metadata.accountLast4) score += 20;
+    // VPA/account
+    if (metadata.vpa || metadata.accountLast4) {
+        score += 15;
+    }
 
-    // Non-generic vendor = higher confidence
-    if (rawVendor && !rawVendor.includes('Unknown')) score += 20;
+    // Vendor quality
+    if (rawVendor && !rawVendor.includes('Unknown')) {
+        score += 25;
+    } else {
+        score += 5;
+    }
 
     if (score >= 70) return 'high';
     if (score >= 40) return 'medium';
@@ -250,9 +458,7 @@ function calculateConfidence({ amounts, direction, rawVendor, metadata }) {
 }
 
 /**
- * Parse multiple emails in batch
- * @param {Array} messages - Array of Gmail API message objects
- * @returns {Array} - Array of parsed transactions
+ * Parse batch
  */
 function parseEmailBatch(messages) {
     const parsed = [];
@@ -274,5 +480,5 @@ function parseEmailBatch(messages) {
 module.exports = {
     parseEmailMessage,
     parseEmailBatch,
-    PATTERNS // Export for testing
+    PATTERNS
 };

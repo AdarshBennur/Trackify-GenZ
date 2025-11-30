@@ -36,187 +36,68 @@ exports.register = asyncHandler(async (req, res) => {
     });
   }
 
+  const { username, email, password } = req.body;
+
   try {
-    const { username, email, password } = req.body;
+    // Check if user already exists with email
+    let userExists = await User.findOne({ email });
 
-    // Log registration attempt for debugging
-    console.log(`Registration attempt for email: ${email}, username: ${username}`.yellow);
-
-    // Check if all required fields are provided
-    if (!username || !email || !password) {
-      console.log('Missing required fields');
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide all required fields: username, email, password'
-      });
-    }
-
-    // Check if user with this email exists
-    console.log('Checking if email already exists...'.yellow);
-    const userExists = await User.findOne({ email });
     if (userExists) {
-      console.log(`User with email ${email} already exists`);
+      console.log(`User with email ${email} already exists`.yellow);
       return res.status(400).json({
         success: false,
         message: 'User with this email already exists'
       });
     }
 
-    // Check username uniqueness
-    console.log('Checking if username already exists...'.yellow);
-    const usernameExists = await User.findOne({ username });
-    if (usernameExists) {
-      console.log(`Username ${username} is already taken`);
+    // Check if username is taken
+    userExists = await User.findOne({ username });
+
+    if (userExists) {
+      console.log(`Username ${username} already taken`.yellow);
       return res.status(400).json({
         success: false,
-        message: 'Username is already taken'
+        message: 'Username already taken'
       });
     }
 
-    // Create user (password will be hashed in the User model pre-save middleware)
-    console.log('Creating new user with details:', { username, email, role: 'user' });
+    // Create user
+    console.log('Creating new user...'.cyan);
+    const user = await User.create({
+      username,
+      email,
+      password
+    });
 
-    try {
-      // Create user document directly using the mongoose model
-      const user = new User({
-        username,
-        email,
-        password,
-        role: 'user' // Ensure role is set to 'user' for regular registered users
-      });
+    console.log(`User created successfully with ID: ${user._id}`.green.bold);
+    console.log(`Username: ${user.username}, Email: ${user.email}`.green);
 
-      // Save to MongoDB
-      console.log('Saving user to MongoDB...'.cyan);
-      const savedUser = await user.save();
+    sendTokenResponse(user, 201, res);
 
-      if (!savedUser || !savedUser._id) {
-        console.error('User save operation did not return a valid user document'.red);
-        return res.status(500).json({
-          success: false,
-          message: 'Failed to save user to database'
-        });
-      }
-
-      console.log('User saved to MongoDB with ID:', savedUser._id);
-
-      // Double check the user was saved by querying it directly from MongoDB
-      const verifyUser = await User.findById(savedUser._id);
-
-      if (!verifyUser) {
-        console.error('CRITICAL ERROR: User not found in database after save'.red.bold);
-        // Try direct MongoDB collection access as a fallback
-        const directDbCheck = await mongoose.connection.db.collection('users').findOne({ _id: savedUser._id });
-
-        if (directDbCheck) {
-          console.log('User found directly in MongoDB collection but not through Mongoose'.yellow);
-        } else {
-          console.error('User not found in MongoDB collection after save - registration FAILED'.red.bold);
-          return res.status(500).json({
-            success: false,
-            message: 'User registration failed. Please try again.'
-          });
-        }
-      } else {
-        console.log('User successfully verified in MongoDB'.green);
-      }
-
-      // Generate JWT token and send response
-      console.log(`User registered successfully: ${email}`.green);
-      sendTokenResponse(savedUser, 201, res);
-
-    } catch (createError) {
-      console.error('Error creating user document:'.red, createError);
-
-      // Try direct MongoDB insertion as a fallback if Mongoose fails
-      if (createError.name === 'MongooseError' || createError.name === 'ValidationError') {
-        console.log('Attempting direct MongoDB insertion as fallback...'.yellow);
-        try {
-          // Create a user document manually
-          const hashedPassword = await bcrypt.hash(password, 10);
-          const userDoc = {
-            username,
-            name: username, // For backward compatibility
-            email,
-            password: hashedPassword,
-            role: 'user',
-            createdAt: new Date()
-          };
-
-          const result = await mongoose.connection.db.collection('users').insertOne(userDoc);
-
-          if (result.acknowledged && result.insertedId) {
-            console.log('User inserted directly into MongoDB with ID:', result.insertedId);
-
-            // Convert to Mongoose document for token generation
-            const insertedUser = await User.findById(result.insertedId);
-            if (insertedUser) {
-              console.log('Successfully retrieved inserted user for token generation'.green);
-              sendTokenResponse(insertedUser, 201, res);
-              return;
-            } else {
-              console.log('Direct insertion succeeded but could not retrieve user for authentication'.yellow);
-              // Continue to error response
-            }
-          }
-        } catch (directInsertError) {
-          console.error('Direct MongoDB insertion also failed:'.red, directInsertError);
-          // Continue to error response
-        }
-      }
-
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to register user. Please try again.',
-        error: process.env.NODE_ENV === 'development' ? createError.message : undefined
-      });
-    }
   } catch (error) {
-    console.error('Error in registration process:'.red, error);
+    console.error('Error during registration:'.red.bold, error);
 
-    // Check for MongoDB connection errors
-    if (error.name === 'MongooseServerSelectionError') {
-      console.error('MongoDB connection error during registration:', error);
-      return res.status(500).json({
-        success: false,
-        message: 'Database connection error. Please try again later.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
-    }
-    // Check for MongoDB duplicate key errors
-    else if (error.code === 11000) {
-      const field = Object.keys(error.keyValue)[0];
-      console.error(`Duplicate ${field} error:`, error.keyValue);
-      return res.status(400).json({
-        success: false,
-        message: `${field === 'email' ? 'Email' : 'Username'} is already in use`
-      });
-    }
-    // Handle validation errors
-    else if (error.name === 'ValidationError') {
-      const messages = Object.values(error.errors).map(val => val.message);
-      console.error('Validation error:', messages);
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(err => err.message);
       return res.status(400).json({
         success: false,
         message: messages.join(', ')
       });
     }
-    // Handle bcrypt or password hashing errors 
-    else if (error.message && error.message.includes('bcrypt')) {
-      console.error('Password hashing error:', error);
-      return res.status(500).json({
+
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyValue)[0];
+      return res.status(400).json({
         success: false,
-        message: 'Error during password encryption. Please try again.'
+        message: `${field} already exists`
       });
     }
-    // Otherwise, return a general error
-    else {
-      console.error('Unexpected error in registration:', error);
-      return res.status(500).json({
-        success: false,
-        message: 'Server error during registration',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
-    }
+
+    return res.status(500).json({
+      success: false,
+      message: 'Server error during registration',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
@@ -224,12 +105,9 @@ exports.register = asyncHandler(async (req, res) => {
 // @route   POST /api/auth/login
 // @access  Public
 exports.login = asyncHandler(async (req, res) => {
-  console.log('Login process started');
-
-  // Check for validation errors
   const errors = validationResult(req);
+
   if (!errors.isEmpty()) {
-    console.log('Validation errors:', errors.array());
     return res.status(400).json({
       success: false,
       errors: errors.array()
@@ -238,193 +116,105 @@ exports.login = asyncHandler(async (req, res) => {
 
   const { email, password } = req.body;
 
-  // Validate email & password
-  if (!email || !password) {
-    console.log('Missing email or password');
-    return res.status(400).json({
+  // Check for user
+  const user = await User.findOne({ email }).select('+password');
+
+  if (!user) {
+    return res.status(401).json({
       success: false,
-      message: 'Please provide an email and password'
+      message: 'Invalid credentials'
     });
   }
 
-  // Check if the login is for the guest account
-  if (email === 'guest@demo.com') {
-    console.log('Guest login detected, forwarding to guest login handler');
-    return this.guestLogin(req, res);
-  }
+  // Check password
+  const isMatch = await user.matchPassword(password);
 
-  try {
-    // Ensure database connection
-    if (mongoose.connection.readyState !== 1) {
-      console.log('MongoDB not connected, attempting to reconnect...');
-      try {
-        await mongoose.connect(process.env.MONGO_URI.replace(/\n/g, '').replace(/\r/g, ''), {
-          useNewUrlParser: true,
-          useUnifiedTopology: true,
-        });
-        console.log('Reconnected to MongoDB successfully');
-      } catch (connectError) {
-        console.error('Failed to reconnect to MongoDB:', connectError);
-        return res.status(500).json({
-          success: false,
-          message: 'Database connection error. Please try again later.'
-        });
-      }
-    }
-
-    // Check for user
-    console.log(`Attempting to find user with email: ${email}`);
-    // select('+password') is needed because password field has select: false by default
-    const user = await User.findOne({ email }).select('+password');
-
-    if (!user) {
-      console.log(`No user found with email: ${email}`);
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials'
-      });
-    }
-
-    // Check if password matches using bcrypt.compare via the method in the User model
-    console.log('Verifying password...');
-    const isMatch = await user.matchPassword(password);
-
-    if (!isMatch) {
-      console.log('Password verification failed');
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials'
-      });
-    }
-
-    console.log(`User logged in successfully: ${email}`);
-    sendTokenResponse(user, 200, res);
-  } catch (error) {
-    console.error('Error in login process:', error);
-    return res.status(500).json({
+  if (!isMatch) {
+    return res.status(401).json({
       success: false,
-      message: 'Server error during login',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: 'Invalid credentials'
     });
   }
-});
 
-// @desc    Login as guest
-// @route   POST /api/auth/guest
-// @access  Public
-exports.guestLogin = asyncHandler(async (req, res) => {
-  console.log('Guest login process started');
-
-  try {
-    // Find existing guest user or create new one
-    let guestUser = await User.findOne({ email: 'guest@demo.com' });
-
-    if (!guestUser) {
-      console.log('Creating guest user account');
-      // Create a guest user account
-      guestUser = await User.create({
-        username: 'Guest User',
-        email: 'guest@demo.com',
-        password: 'guest123', // This will be hashed by the User model's pre-save hook
-        role: 'guest'
-      });
-    } else {
-      // Ensure the role is set to 'guest' even if it was changed
-      if (guestUser.role !== 'guest') {
-        guestUser.role = 'guest';
-        await guestUser.save();
-      }
-    }
-
-    console.log('Guest user logged in successfully');
-    // Generate guest token with shorter expiry
-    const token = guestUser.getSignedJwtToken();
-
-    const options = {
-      expires: new Date(Date.now() + 24 * 60 * 60 * 1000), // 1 day for guest
-      httpOnly: true
-    };
-
-    if (process.env.NODE_ENV === 'production') {
-      options.secure = true;
-    }
-
-    // Send guest response
-    res.status(200)
-      .cookie('token', token, options)
-      .json({
-        success: true,
-        token,
-        user: {
-          id: guestUser._id,
-          username: guestUser.username,
-          email: guestUser.email,
-          role: guestUser.role
-        },
-        message: 'Logged in as guest. You can explore all features with sample data!'
-      });
-  } catch (error) {
-    console.error('Error in guest login process:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Server error during guest login',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
+  sendTokenResponse(user, 200, res);
 });
 
 // @desc    Get current logged in user
 // @route   GET /api/auth/me
 // @access  Private
 exports.getMe = asyncHandler(async (req, res) => {
-  console.log(`getMe called for user: ${req.user.email} (${req.user.id})`);
+  console.log('getMe called');
 
   try {
     const user = await User.findById(req.user.id);
 
     if (!user) {
+      console.log(`User not found with ID: ${req.user.id}`);
       return res.status(404).json({
         success: false,
         message: 'User not found'
       });
     }
 
+    console.log(`User data retrieved: ${user.email}`);
+
     res.status(200).json({
       success: true,
       data: user
     });
   } catch (error) {
-    console.error('Error in getMe process:', error);
-    return res.status(500).json({
+    console.error('Error in getMe:', error);
+    res.status(500).json({
       success: false,
-      message: 'Server error retrieving user data',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: 'Error retrieving user data'
     });
   }
 });
 
-// @desc    Log user out / clear cookie
+// @desc    Logout user / clear cookie
 // @route   GET /api/auth/logout
 // @access  Private
 exports.logout = asyncHandler(async (req, res) => {
-  console.log('User logout process started');
+  res.cookie('token', 'none', {
+    expires: new Date(Date.now() + 10 * 1000),
+    httpOnly: true
+  });
 
+  res.status(200).json({
+    success: true,
+    data: {}
+  });
+});
+
+// @desc    Login as guest
+// @route   POST /api/auth/guest
+// @access  Public
+exports.guestLogin = asyncHandler(async (req, res) => {
   try {
-    res.cookie('token', 'none', {
-      expires: new Date(Date.now() + 10 * 1000),
-      httpOnly: true
-    });
+    // Try to find existing guest user
+    let guestUser = await User.findOne({ email: 'guest@demo.com' }).select('+password');
 
-    console.log('User logged out successfully');
-    res.status(200).json({
-      success: true,
-      data: {}
-    });
+    // If guest user doesn't exist, create one
+    if (!guestUser) {
+      console.log('Creating new guest user...');
+
+      guestUser = await User.create({
+        username: 'Guest User',
+        email: 'guest@demo.com',
+        password: 'guest123',
+        role: 'guest'
+      });
+
+      console.log('Guest user created successfully');
+    }
+
+    sendTokenResponse(guestUser, 200, res);
+
   } catch (error) {
-    console.error('Error in logout process:', error);
+    console.error('Guest login error:', error);
     return res.status(500).json({
       success: false,
-      message: 'Server error during logout',
+      message: 'Guest login failed',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
@@ -455,6 +245,8 @@ const sendTokenResponse = (user, statusCode, res) => {
     if (process.env.NODE_ENV === 'production') {
       options.secure = true;
     }
+
+    console.log('Sending token response...');
 
     res
       .status(statusCode)
@@ -565,5 +357,54 @@ exports.googleAuth = asyncHandler(async (req, res) => {
       message: 'Invalid Google token',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
+  }
+});
+
+// @desc    Initiate Gmail OAuth consent
+// @route   GET /api/auth/google/gmail
+// @access  Private
+exports.initiateGmailConsent = asyncHandler(async (req, res) => {
+  const gmailService = require('../services/gmailService');
+
+  try {
+    // Generate authorization URL with user ID in state
+    const authUrl = gmailService.generateAuthUrl(req.user.id);
+
+    res.status(200).json({
+      success: true,
+      authUrl
+    });
+  } catch (error) {
+    console.error('Error generating Gmail auth URL:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate Gmail authorization URL'
+    });
+  }
+});
+
+// @desc    Handle Gmail OAuth callback
+// @route   GET /api/auth/google/gmail/callback
+// @access  Public
+exports.handleGmailCallback = asyncHandler(async (req, res) => {
+  const gmailService = require('../services/gmailService');
+  const { code, state } = req.query;
+
+  if (!code || !state) {
+    return res.redirect(`${process.env.CLIENT_URL || 'http://localhost:3000'}/profile?gmail=error&reason=missing_params`);
+  }
+
+  try {
+    // Exchange authorization code for tokens
+    const tokens = await gmailService.exchangeCodeForTokens(code);
+
+    // Save encrypted tokens for user (state contains userId)
+    await gmailService.saveTokensForUser(state, tokens);
+
+    // Redirect to frontend with success message
+    res.redirect(`${process.env.CLIENT_URL || 'http://localhost:3000'}/profile?gmail=connected`);
+  } catch (error) {
+    console.error('Gmail OAuth callback error:', error);
+    res.redirect(`${process.env.CLIENT_URL || 'http://localhost:3000'}/profile?gmail=error&reason=token_exchange_failed`);
   }
 });
