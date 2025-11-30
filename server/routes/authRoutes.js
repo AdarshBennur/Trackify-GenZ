@@ -1,6 +1,6 @@
 const express = require('express');
 const { check } = require('express-validator');
-const { register, login, getMe, logout, guestLogin, googleAuth } = require('../controllers/authController');
+const { register, login, getMe, logout, guestLogin, googleAuth, initiateGmailConsent, handleGmailCallback } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
 
 const router = express.Router();
@@ -62,5 +62,15 @@ router.get('/me', protect, getMe);
 // @desc    Logout user
 // @access  Private
 router.get('/logout', protect, logout);
+
+// @route   GET /api/auth/google/gmail
+// @desc    Initiate Gmail OAuth consent
+// @access  Private
+router.get('/google/gmail', protect, initiateGmailConsent);
+
+// @route   GET /api/auth/google/gmail/callback
+// @desc    Handle Gmail OAuth callback
+// @access  Public
+router.get('/google/gmail/callback', handleGmailCallback);
 
 module.exports = router; 
