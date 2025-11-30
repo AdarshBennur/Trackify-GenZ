@@ -147,6 +147,7 @@ exports.getMe = asyncHandler(async (req, res) => {
 
   try {
     const user = await User.findById(req.user.id);
+    const GmailToken = require('../models/GmailToken');
 
     if (!user) {
       console.log(`User not found with ID: ${req.user.id}`);
@@ -156,11 +157,16 @@ exports.getMe = asyncHandler(async (req, res) => {
       });
     }
 
-    console.log(`User data retrieved: ${user.email}`);
+    // Check Gmail connection status
+    const gmailToken = await GmailToken.findOne({ user: user._id, isActive: true });
+    const userObj = user.toObject();
+    userObj.gmailConnected = !!gmailToken;
+
+    console.log(`User data retrieved: ${user.email}, Gmail connected: ${userObj.gmailConnected}`);
 
     res.status(200).json({
       success: true,
-      data: user
+      data: userObj
     });
   } catch (error) {
     console.error('Error in getMe:', error);

@@ -54,6 +54,20 @@ const UserSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Currency'
   },
+  // Gmail Automation Fields
+  gmailMessageIdsProcessed: {
+    type: [String],
+    default: [],
+    select: false // Don't return by default to keep payload small
+  },
+  lastGmailAutoSync: {
+    type: Date,
+    default: null
+  },
+  gmailSyncError: {
+    type: String,
+    default: null
+  },
   createdAt: {
     type: Date,
     default: Date.now

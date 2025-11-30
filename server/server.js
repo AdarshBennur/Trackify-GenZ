@@ -163,6 +163,8 @@ async function startServer() {
       app.use('/api/reminders', reminderRoutes);
       app.use('/api/gmail', gmailRoutes);
       app.use('/api/users', userRoutes);
+      app.use('/api/notifications', require('./routes/notifications'));
+      app.use('/api/admin', require('./routes/admin'));
 
       // Define port
       const PORT = process.env.PORT || 5000;
@@ -209,6 +211,12 @@ async function startServer() {
 
 // Start the server
 startServer();
+
+// Start Gmail Cron Job
+if (process.env.ENABLE_GMAIL_CRON !== 'false') {
+  const gmailFetchJob = require('./jobs/gmailFetchJob');
+  gmailFetchJob.start();
+}
 
 // Error handler middleware - keep this after routes
 app.use(errorHandler);

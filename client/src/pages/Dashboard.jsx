@@ -131,6 +131,9 @@ const MOCK_INCOMES = [
   }
 ];
 
+import GmailConnectModal from '../components/GmailConnectModal';
+import { FaGoogle } from 'react-icons/fa';
+
 const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -145,7 +148,28 @@ const Dashboard = () => {
   const [incomeData, setIncomeData] = useState([]);
   const [expenseData, setExpenseData] = useState([]);
   const [dateRange, setDateRange] = useState('month'); // 'week', 'month', 'year'
+  const [showGmailModal, setShowGmailModal] = useState(false);
   const { user, isAuthenticated, isGuestUser } = useAuth();
+
+  // Check for Gmail connection prompt
+  useEffect(() => {
+    if (isAuthenticated && !isGuestUser() && user && !user.gmailConnected) {
+      // Check if we should suppress the modal (e.g., user dismissed it recently)
+      const dismissedAt = localStorage.getItem('gmail_modal_dismissed');
+      const shouldShow = !dismissedAt || (Date.now() - parseInt(dismissedAt) > 7 * 24 * 60 * 60 * 1000); // Show again after 7 days
+
+      if (shouldShow) {
+        // Small delay to not overwhelm user immediately
+        const timer = setTimeout(() => setShowGmailModal(true), 2000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [isAuthenticated, isGuestUser, user]);
+
+  const handleCloseGmailModal = () => {
+    setShowGmailModal(false);
+    localStorage.setItem('gmail_modal_dismissed', Date.now().toString());
+  };
 
   // Load dashboard data
   useEffect(() => {
@@ -529,6 +553,11 @@ const Dashboard = () => {
       exit={{ opacity: 0 }}
       transition={{ duration: 0.5 }}
     >
+      <GmailConnectModal
+        isOpen={showGmailModal}
+        onClose={handleCloseGmailModal}
+      />
+
       <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
@@ -540,6 +569,17 @@ const Dashboard = () => {
         </div>
 
         <div className="mt-4 md:mt-0 flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
+          {/* Gmail Connect Button (Visible if not connected) */}
+          {isAuthenticated && !isGuestUser() && user && !user.gmailConnected && (
+            <button
+              onClick={() => setShowGmailModal(true)}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+            >
+              <FaGoogle className="mr-2" />
+              Connect Gmail
+            </button>
+          )}
+
           <div className="inline-flex rounded-md shadow-sm">
             <button
               type="button"
