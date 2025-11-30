@@ -131,6 +131,10 @@ const MOCK_INCOMES = [
   }
 ];
 
+import GmailConnectModal from '../components/GmailConnectModal';
+import { FaGoogle } from 'react-icons/fa';
+import { getGmailStatus } from '../services/api/gmail';
+
 const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -145,7 +149,42 @@ const Dashboard = () => {
   const [incomeData, setIncomeData] = useState([]);
   const [expenseData, setExpenseData] = useState([]);
   const [dateRange, setDateRange] = useState('month'); // 'week', 'month', 'year'
+  const [showGmailModal, setShowGmailModal] = useState(false);
+  const [gmailStatus, setGmailStatus] = useState(null);
   const { user, isAuthenticated, isGuestUser } = useAuth();
+
+  // Check for Gmail connection status and show modal if needed
+  useEffect(() => {
+    async function checkGmailStatus() {
+      if (!isAuthenticated || isGuestUser()) return;
+
+      try {
+        const status = await getGmailStatus();
+        setGmailStatus(status);
+
+        // Check snooze (24 hours)
+        const snoozed = localStorage.getItem('gmail_connect_snooze_v2');
+        const snoozeValid = snoozed && (Date.now() - parseInt(snoozed, 10)) < 24 * 60 * 60 * 1000;
+
+        if (!status.connected && !snoozeValid) {
+          setShowGmailModal(true);
+        }
+      } catch (err) {
+        if (err.message === 'NOT_AUTHENTICATED') {
+          // User not authenticated, skip
+          return;
+        }
+        console.error('Gmail status check failed', err);
+      }
+    }
+
+    checkGmailStatus();
+  }, [isAuthenticated, isGuestUser]);
+
+  const handleCloseGmailModal = () => {
+    setShowGmailModal(false);
+    localStorage.setItem('gmail_modal_dismissed', Date.now().toString());
+  };
 
   // Load dashboard data
   useEffect(() => {
@@ -529,6 +568,38 @@ const Dashboard = () => {
       exit={{ opacity: 0 }}
       transition={{ duration: 0.5 }}
     >
+      <GmailConnectModal
+        isOpen={showGmailModal}
+        onClose={handleCloseGmailModal}
+      />
+
+      {/* Gmail Error Notification */}
+      {gmailStatus?.error && (
+        <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-yellow-700">
+                Gmail connection lost.{' '}
+                <a
+                  href={`${process.env.REACT_APP_API_URL || 'http://localhost:5001'}/api/auth/google/gmail`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium underline hover:text-yellow-600"
+                >
+                  Reconnect
+                </a>
+                {' '}to continue auto-importing transactions.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
@@ -540,6 +611,17 @@ const Dashboard = () => {
         </div>
 
         <div className="mt-4 md:mt-0 flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
+          {/* Gmail Connect Button (Visible if not connected) */}
+          {isAuthenticated && !isGuestUser() && user && !user.gmailConnected && (
+            <button
+              onClick={() => setShowGmailModal(true)}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+            >
+              <FaGoogle className="mr-2" />
+              Connect Gmail
+            </button>
+          )}
+
           <div className="inline-flex rounded-md shadow-sm">
             <button
               type="button"

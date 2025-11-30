@@ -222,18 +222,21 @@ async function revokeAccess(userId) {
  */
 async function getConnectionStatus(userId) {
     const tokenDoc = await GmailToken.findOne({ user: userId, isActive: true });
+    const User = require('../models/User');
+    const user = await User.findById(userId);
 
     if (!tokenDoc) {
         return {
             connected: false,
-            lastFetchAt: null
+            lastSync: null,
+            error: user?.gmailSyncError || null
         };
     }
 
     return {
         connected: true,
-        lastFetchAt: tokenDoc.lastFetchAt,
-        connectedAt: tokenDoc.createdAt
+        lastSync: tokenDoc.lastFetchAt?.toISOString() || null,
+        error: user?.gmailSyncError || null
     };
 }
 
@@ -246,5 +249,108 @@ module.exports = {
     fetchMessages,
     revokeAccess,
     getConnectionStatus,
+    getOauthClientFromUser,
+    listNewMessagesAndParse,
     SCOPES
 };
+
+/**
+ * Get OAuth2 client from user's stored tokens
+ * @param {Object} user - User document
+ * @returns {Promise<Object>} - OAuth2 client
+ */
+async function getOauthClientFromUser(user) {
+    const accessToken = await refreshAccessToken(user._id || user.id);
+    const oauth2Client = createOAuth2Client();
+    oauth2Client.setCredentials({ access_token: accessToken });
+    return oauth2Client;
+}
+
+const {
+    extractBodyFromMessage,
+    parseTransactionFromText,
+    saveIfNew,
+    generateTransactionHash
+} = require('./gmailHelpers');
+const User = require('../models/User');
+
+/**
+ * List new messages, parse, dedupe, save
+ * @param {string} userId
+ * @param {Object} options
+ * @returns {Promise<Object>} - { fetched, parsed, saved, skipped, errors }
+ */
+async function listNewMessagesAndParse(userId, options = {}) {
+    const stats = { fetched: 0, parsed: 0, saved: 0, skipped: 0, errors: [] };
+
+    try {
+        // Get user to check processed IDs
+        const user = await User.findById(userId).select('+gmailMessageIdsProcessed');
+        if (!user) throw new Error('User not found');
+
+        const processedIds = new Set(user.gmailMessageIdsProcessed || []);
+
+        // Fetch messages
+        const messages = await fetchMessages(userId, options);
+        stats.fetched = messages.length;
+
+        if (messages.length === 0) return stats;
+
+        const newProcessedIds = [];
+
+        for (const message of messages) {
+            try {
+                // Dedupe by ID
+                if (processedIds.has(message.id)) {
+                    stats.skipped++;
+                    continue;
+                }
+
+                // Extract and parse
+                const body = extractBodyFromMessage(message);
+                const headers = message.payload.headers;
+
+                const parsed = parseTransactionFromText(body, headers, message.id);
+
+                if (parsed) {
+                    stats.parsed++;
+
+                    // Save if new (secondary dedupe + DB check)
+                    const saved = await saveIfNew(userId, parsed, message.id);
+
+                    if (saved) {
+                        stats.saved++;
+                    } else {
+                        stats.skipped++; // Duplicate in DB
+                    }
+                }
+
+                // Mark as processed regardless of parsing success to avoid re-fetching
+                // (Or maybe only if parsed? No, better to skip non-transaction emails next time)
+                // Actually, if we query with "payment OR credited...", we assume they are relevant.
+                // But if parser fails, maybe we shouldn't block it forever? 
+                // For now, let's track it so we don't re-process.
+                newProcessedIds.push(message.id);
+
+            } catch (err) {
+                console.error(`Error processing message ${message.id}:`, err);
+                stats.errors.push({ id: message.id, error: err.message });
+            }
+        }
+
+        // Update user processed IDs
+        if (newProcessedIds.length > 0) {
+            await User.findByIdAndUpdate(userId, {
+                $addToSet: { gmailMessageIdsProcessed: { $each: newProcessedIds } },
+                lastGmailAutoSync: new Date(),
+                gmailSyncError: null // Clear any previous error
+            });
+        }
+
+        return stats;
+
+    } catch (error) {
+        console.error('Error in listNewMessagesAndParse:', error);
+        throw error;
+    }
+}
