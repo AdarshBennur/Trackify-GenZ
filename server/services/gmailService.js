@@ -222,18 +222,21 @@ async function revokeAccess(userId) {
  */
 async function getConnectionStatus(userId) {
     const tokenDoc = await GmailToken.findOne({ user: userId, isActive: true });
+    const User = require('../models/User');
+    const user = await User.findById(userId);
 
     if (!tokenDoc) {
         return {
             connected: false,
-            lastFetchAt: null
+            lastSync: null,
+            error: user?.gmailSyncError || null
         };
     }
 
     return {
         connected: true,
-        lastFetchAt: tokenDoc.lastFetchAt,
-        connectedAt: tokenDoc.createdAt
+        lastSync: tokenDoc.lastFetchAt?.toISOString() || null,
+        error: user?.gmailSyncError || null
     };
 }
 

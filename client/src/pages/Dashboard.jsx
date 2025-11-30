@@ -133,6 +133,7 @@ const MOCK_INCOMES = [
 
 import GmailConnectModal from '../components/GmailConnectModal';
 import { FaGoogle } from 'react-icons/fa';
+import { getGmailStatus } from '../services/api/gmail';
 
 const Dashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -149,22 +150,36 @@ const Dashboard = () => {
   const [expenseData, setExpenseData] = useState([]);
   const [dateRange, setDateRange] = useState('month'); // 'week', 'month', 'year'
   const [showGmailModal, setShowGmailModal] = useState(false);
+  const [gmailStatus, setGmailStatus] = useState(null);
   const { user, isAuthenticated, isGuestUser } = useAuth();
 
-  // Check for Gmail connection prompt
+  // Check for Gmail connection status and show modal if needed
   useEffect(() => {
-    if (isAuthenticated && !isGuestUser() && user && !user.gmailConnected) {
-      // Check if we should suppress the modal (e.g., user dismissed it recently)
-      const dismissedAt = localStorage.getItem('gmail_modal_dismissed');
-      const shouldShow = !dismissedAt || (Date.now() - parseInt(dismissedAt) > 7 * 24 * 60 * 60 * 1000); // Show again after 7 days
+    async function checkGmailStatus() {
+      if (!isAuthenticated || isGuestUser()) return;
 
-      if (shouldShow) {
-        // Small delay to not overwhelm user immediately
-        const timer = setTimeout(() => setShowGmailModal(true), 2000);
-        return () => clearTimeout(timer);
+      try {
+        const status = await getGmailStatus();
+        setGmailStatus(status);
+
+        // Check snooze (24 hours)
+        const snoozed = localStorage.getItem('gmail_connect_snooze_v2');
+        const snoozeValid = snoozed && (Date.now() - parseInt(snoozed, 10)) < 24 * 60 * 60 * 1000;
+
+        if (!status.connected && !snoozeValid) {
+          setShowGmailModal(true);
+        }
+      } catch (err) {
+        if (err.message === 'NOT_AUTHENTICATED') {
+          // User not authenticated, skip
+          return;
+        }
+        console.error('Gmail status check failed', err);
       }
     }
-  }, [isAuthenticated, isGuestUser, user]);
+
+    checkGmailStatus();
+  }, [isAuthenticated, isGuestUser]);
 
   const handleCloseGmailModal = () => {
     setShowGmailModal(false);
@@ -557,6 +572,33 @@ const Dashboard = () => {
         isOpen={showGmailModal}
         onClose={handleCloseGmailModal}
       />
+
+      {/* Gmail Error Notification */}
+      {gmailStatus?.error && (
+        <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-yellow-700">
+                Gmail connection lost.{' '}
+                <a
+                  href={`${process.env.REACT_APP_API_URL || 'http://localhost:5001'}/api/auth/google/gmail`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium underline hover:text-yellow-600"
+                >
+                  Reconnect
+                </a>
+                {' '}to continue auto-importing transactions.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between">
         <div>
