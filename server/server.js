@@ -29,6 +29,7 @@ const budgetRoutes = require('./routes/budgetRoutes');
 const goalRoutes = require('./routes/goalRoutes');
 const reminderRoutes = require('./routes/reminderRoutes');
 const userRoutes = require('./routes/userRoutes');
+const gmailRoutes = require('./routes/gmail');
 const healthRoute = require('./routes/health');
 
 // Import setupCollections
@@ -160,6 +161,7 @@ async function startServer() {
       app.use('/api/budgets', budgetRoutes);
       app.use('/api/goals', goalRoutes);
       app.use('/api/reminders', reminderRoutes);
+      app.use('/api/gmail', gmailRoutes);
       app.use('/api/users', userRoutes);
 
       // Define port
