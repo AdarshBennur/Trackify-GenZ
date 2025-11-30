@@ -12,7 +12,14 @@ const PATTERNS = {
     debitKeywords: /\b(debited|paid|payment of|sent|withdrawn|spent)\b/gi,
     creditKeywords: /\b(credited|deposit|received|refund|cashback)\b/gi,
 
-    // Improved merchant hint with stop words
+    // NEW: Enhanced merchant extraction patterns
+    upiVendor: /(?:by\s+UPI[-\s]?|UPI\s+payment\s+to\s+)([A-Za-z0-9 &.\-]{3,80})/i,
+    paymentTo: /(?:payment\s+to|paid\s+to|paid\s+for)\s+([A-Za-z0-9 &.\-]{3,80})/i,
+    subscription: /\b(subscription\s+renewed|auto-?renew|renewal\s+of)\b/i,
+    autopay: /\b(auto-?pay|recurring|monthly\s+subscription|standing\s+instruction)\b/i,
+    walletTransfer: /\b(wallet\s+transfer|transferred\s+to\s+wallet)\b/i,
+
+    // Original merchant hint with stop words
     merchantHint: /(?:\b(?:to|at|from|via|by)\b)\s+(.{3,60}?)(?=\s+(?:on|ref|txn|utr|order|\d|₹|INR|Rs\.|$))/i,
 
     upiVpa: /([\w.-]+@[\w.-]+)/g,
@@ -275,6 +282,21 @@ function determineDirectionEnhanced(text, subject, from) {
         return { direction: 'credit', confidence: 0.9 };
     }
 
+    // NEW: Check for subscription/autopay patterns (always debit)
+    if (PATTERNS.subscription.test(text) || PATTERNS.autopay.test(text)) {
+        return { direction: 'debit', confidence: 0.85 };
+    }
+
+    // NEW: Wallet transfer detection
+    if (PATTERNS.walletTransfer.test(text)) {
+        // Context-dependent: "transferred to wallet" = credit, "transferred from wallet" = debit
+        if (/transferred\s+to\s+wallet/i.test(text)) {
+            return { direction: 'credit', confidence: 0.8 };
+        } else {
+            return { direction: 'debit', confidence: 0.8 };
+        }
+    }
+
     // Weighted keyword scoring
     const creditWords = ['credited', 'deposit', 'received', 'refund', 'cashback'];
     const debitWords = ['debited', 'paid', 'payment of', 'sent', 'withdrawn', 'spent'];
@@ -324,7 +346,27 @@ function determineDirectionEnhanced(text, subject, from) {
  * Enhanced vendor extraction with fallbacks
  */
 function extractVendorEnhanced(body, subject, from) {
-    // 1. Try merchant hint pattern
+    // 1. Try UPI vendor pattern
+    const upiMatch = PATTERNS.upiVendor.exec(body);
+    if (upiMatch) {
+        let vendor = upiMatch[1].trim();
+        vendor = vendor.replace(PATTERNS.cleanupSuffix, '').trim();
+        if (vendor.length >= 3) {
+            return vendor;
+        }
+    }
+
+    // 2. Try payment-to pattern
+    const paymentMatch = PATTERNS.paymentTo.exec(body);
+    if (paymentMatch) {
+        let vendor = paymentMatch[1].trim();
+        vendor = vendor.replace(PATTERNS.cleanupSuffix, '').trim();
+        if (vendor.length >= 3) {
+            return vendor;
+        }
+    }
+
+    // 3. Try merchant hint pattern
     const merchantMatch = PATTERNS.merchantHint.exec(body);
     if (merchantMatch) {
         let vendor = merchantMatch[1].trim();
@@ -335,7 +377,7 @@ function extractVendorEnhanced(body, subject, from) {
         }
     }
 
-    // 2. Try sender domain mapping
+    // 4. Try sender domain mapping
     const lowerFrom = from.toLowerCase();
     for (const [domain, merchant] of Object.entries(MERCHANT_DOMAINS)) {
         if (lowerFrom.includes(domain)) {
@@ -343,7 +385,7 @@ function extractVendorEnhanced(body, subject, from) {
         }
     }
 
-    // 3. Subject line tokens (filter stopwords)
+    // 5. Subject line tokens (filter stopwords)
     const stopwords = ['alert', 'notification', 'transaction', 'payment', 'receipt', 'confirmation', 'for', 'the', 'your', 'order', 'ref', 'txn'];
     const subjectWords = subject
         .split(/[\s\-:]+/)
