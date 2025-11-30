@@ -1,73 +1,148 @@
 const crypto = require('crypto');
 
-// Encryption key from environment (must be 32 characters for AES-256)
-const ENCRYPTION_KEY = process.env.GMAIL_ENCRYPTION_KEY || 'default-insecure-key-change-me!!';
-const ALGORITHM = 'aes-256-cbc';
-const IV_LENGTH = 16; // For AES, this is always 16
+/**
+ * Encryption Service using AES-256-GCM
+ * Provides secure encryption/decryption for sensitive data like OAuth tokens
+ */
+
+// Algorithm configuration
+const ALGORITHM = 'aes-256-gcm';
+const IV_LENGTH = 16; // 16 bytes for AES
+const TAG_LENGTH = 16; // 16 bytes for GCM auth tag
+const KEY_LENGTH = 32; // 32 bytes for AES-256
 
 /**
- * Encrypt text using AES-256-CBC
+ * Get or derive encryption key
+ * @returns {Buffer} - 32-byte encryption key
+ */
+function getEncryptionKey() {
+    const keySource = process.env.GMAIL_ENCRYPTION_KEY || process.env.ENCRYPTION_KEY;
+
+    if (!keySource) {
+        throw new Error('GMAIL_ENCRYPTION_KEY or ENCRYPTION_KEY environment variable is required');
+    }
+
+    // If key is already 32 bytes (64 hex chars), use it directly
+    if (keySource.length === 64 && /^[0-9a-fA-F]+$/.test(keySource)) {
+        return Buffer.from(keySource, 'hex');
+    }
+
+    // Otherwise, derive a 32-byte key from the passphrase
+    return crypto.createHash('sha256').update(keySource).digest();
+}
+
+/**
+ * Encrypt a string using AES-256-GCM
  * @param {string} text - Text to encrypt
- * @returns {string} - Encrypted text in format: iv:encryptedData
+ * @returns {string} - Format: iv:tag:ciphertext (all base64)
  */
 function encrypt(text) {
-    if (!text) {
-        throw new Error('Text to encrypt cannot be empty');
+    if (!text || typeof text !== 'string') {
+        throw new Error('Text to encrypt must be a non-empty string');
     }
 
-    // Ensure key is exactly 32 bytes
-    const key = Buffer.from(ENCRYPTION_KEY.padEnd(32, '0').slice(0, 32));
+    try {
+        const key = getEncryptionKey();
 
-    const iv = crypto.randomBytes(IV_LENGTH);
-    const cipher = crypto.createCipher Cipher(ALGORITHM, key, iv);
+        // Generate random IV
+        const iv = crypto.randomBytes(IV_LENGTH);
 
-    let encrypted = cipher.update(text, 'utf8', 'hex');
-    encrypted += cipher.final('hex');
+        // Create cipher
+        const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
 
-    // Return iv:encryptedData format
-    return `${iv.toString('hex')}:${encrypted}`;
+        // Encrypt
+        let encrypted = cipher.update(text, 'utf8', 'base64');
+        encrypted += cipher.final('base64');
+
+        // Get auth tag
+        const tag = cipher.getAuthTag();
+
+        // Return format: iv:tag:ciphertext
+        return `${iv.toString('base64')}:${tag.toString('base64')}:${encrypted}`;
+    } catch (error) {
+        throw new Error(`Encryption failed: ${error.message}`);
+    }
 }
 
 /**
- * Decrypt text using AES-256-CBC
- * @param {string} encryptedText - Encrypted text in format: iv:encryptedData
- * @returns {string} - Decrypted text
+ * Decrypt a string using AES-256-GCM
+ * @param {string} encryptedText - Format: iv:tag:ciphertext (all base64)
+ * @returns {string} - Decrypted plaintext
  */
 function decrypt(encryptedText) {
-    if (!encryptedText) {
-        throw new Error('Encrypted text cannot be empty');
+    if (!encryptedText || typeof encryptedText !== 'string') {
+        throw new Error('Encrypted text must be a non-empty string');
     }
 
-    // Ensure key is exactly 32 bytes
-    const key = Buffer.from(ENCRYPTION_KEY.padEnd(32, '0').slice(0, 32));
+    try {
+        const key = getEncryptionKey();
 
-    // Split iv and encrypted data
-    const parts = encryptedText.split(':');
-    if (parts.length !== 2) {
-        throw new Error('Invalid encrypted text format');
+        // Parse format: iv:tag:ciphertext
+        const parts = encryptedText.split(':');
+        if (parts.length !== 3) {
+            throw new Error('Invalid encrypted text format. Expected iv:tag:ciphertext');
+        }
+
+        const iv = Buffer.from(parts[0], 'base64');
+        const tag = Buffer.from(parts[1], 'base64');
+        const encrypted = parts[2];
+
+        // Validate lengths
+        if (iv.length !== IV_LENGTH) {
+            throw new Error(`Invalid IV length: expected ${IV_LENGTH}, got ${iv.length}`);
+        }
+        if (tag.length !== TAG_LENGTH) {
+            throw new Error(`Invalid tag length: expected ${TAG_LENGTH}, got ${tag.length}`);
+        }
+
+        // Create decipher
+        const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+        decipher.setAuthTag(tag);
+
+        // Decrypt
+        let decrypted = decipher.update(encrypted, 'base64', 'utf8');
+        decrypted += decipher.final('utf8');
+
+        return decrypted;
+    } catch (error) {
+        throw new Error(`Decryption failed: ${error.message}`);
     }
-
-    const iv = Buffer.from(parts[0], 'hex');
-    const encryptedData = parts[1];
-
-    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
-
-    let decrypted = decipher.update(encryptedData, 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
-
-    return decrypted;
 }
 
 /**
- * Generate a secure random encryption key
- * @returns {string} - 32-character random string
+ * Generate a random encryption key (for setup)
+ * @returns {string} - 64-character hex string (32 bytes)
  */
 function generateEncryptionKey() {
-    return crypto.randomBytes(32).toString('hex').slice(0, 32);
+    return crypto.randomBytes(KEY_LENGTH).toString('hex');
+}
+
+/**
+ * Test encryption/decryption roundtrip
+ * @returns {boolean} - True if test passes
+ */
+function testEncryption() {
+    try {
+        const testData = 'test-secret-token-12345';
+        const encrypted = encrypt(testData);
+        const decrypted = decrypt(encrypted);
+
+        if (decrypted === testData) {
+            console.log('✅ Encryption service test: PASSED');
+            return true;
+        } else {
+            console.error('❌ Encryption service test: FAILED - decrypted text does not match');
+            return false;
+        }
+    } catch (error) {
+        console.error('❌ Encryption service test: FAILED -', error.message);
+        return false;
+    }
 }
 
 module.exports = {
     encrypt,
     decrypt,
-    generateEncryptionKey
+    generateEncryptionKey,
+    testEncryption
 };
