@@ -1,0 +1,304 @@
+[
+    {
+        "id": "test-1",
+        "internalDate": "1701360000000",
+        "snippet": "Your account has been debited with Rs.1,250.00 on 30-Nov-23 by UPI-SWIGGY",
+        "payload": {
+            "headers": [
+                {
+                    "name": "Subject",
+                    "value": "Account Debited - UPI Transaction"
+                },
+                {
+                    "name": "From",
+                    "value": "alerts@icicibank.com"
+                }
+            ],
+            "body": {
+                "data": "SGVsbG8sIFlvdXIgYWNjb3VudCBoYXMgYmVlbiBkZWJpdGVkIHdpdGggUlMuMS4yNTAuMDAgb24gMzAtTm92LTIzIGJ5IFVQSS1TV0lHR1kuIEFjY291bnQgbnVtYmVyOiAqKioqMTIzNC4gVVBJIElEOiBzd2lnZ3lAcGF5dG0uIFJlZmVyZW5jZTogMTIzNDU2Nzg5MC4="
+            }
+        },
+        "expected": {
+            "amount": 1250.00,
+            "direction": "debit",
+            "vendor": "Swiggy",
+            "confidence": "high"
+        }
+    },
+    {
+        "id": "test-2",
+        "internalDate": "1701360000000",
+        "snippet": "Rs 499 credited to your account ending 5678 on 29-Nov-23. Amazon Pay refund.",
+        "payload": {
+            "headers": [
+                {
+                    "name": "Subject",
+                    "value": "Account Credited"
+                },
+                {
+                    "name": "From",
+                    "value": "noreply@hdfcbank.com"
+                }
+            ],
+            "body": {
+                "data": "RGVhciBDdXN0b21lciwgUlMgNDk5IGNyZWRpdGVkIHRvIHlvdXIgYWNjb3VudCBlbmRpbmcgNTY3OCBvbiAyOS1Ob3YtMjMuIEFtYXpvbiBQYXkgcmVmdW5kLiBSZWY6IEFNWFI5ODc2NTQz"
+            }
+        },
+        "expected": {
+            "amount": 499.00,
+            "direction": "credit",
+            "vendor": "Amazon",
+            "confidence": "high"
+        }
+    },
+    {
+        "id": "test-3",
+        "internalDate": "1701360000000",
+        "snippet": "INR 2500.00 debited from A/C **9876 for Paytm payment",
+        "payload": {
+            "headers": [
+                {
+                    "name": "Subject",
+                    "value": "Transaction Alert"
+                },
+                {
+                    "name": "From",
+                    "value": "sbi.alerts@sbi.co.in"
+                }
+            ],
+            "body": {
+                "data": "RGVhciBDdXN0b21lciwgSU5SIDIsNTAwLjAwIGRlYml0ZWQgZnJvbSBBL0MgKio5ODc2IGZvciBQYXl0bSBwYXltZW50IG9uIDI4LU5vdi0yMy4gUmVmZXJlbmNlOiBQVE05ODc2NTQzMjE="
+            }
+        },
+        "expected": {
+            "amount": 2500.00,
+            "direction": "debit",
+            "vendor": "Paytm",
+            "confidence": "high"
+        }
+    },
+    {
+        "id": "test-4",
+        "internalDate": "1701360000000",
+        "snippet": "Payment of Rs.350 to ZOMATO FOOD via UPI",
+        "payload": {
+            "headers": [
+                {
+                    "name": "Subject",
+                    "value": "UPI Payment Success"
+                },
+                {
+                    "name": "From",
+                    "value": "upi@axisbank.com"
+                }
+            ],
+            "body": {
+                "data": "UGF5bWVudCBvZiBScy4zNTAgdG8gWk9NQVRPIEZPT0QgdmlhIFVQSS4gVlBBOiB6b21hdG9AcGF5dG0uIEFjY291bnQ6ICoqKiozNDU2LiBSZWY6IDEyMzQ1Njc4OTA="
+            }
+        },
+        "expected": {
+            "amount": 350.00,
+            "direction": "debit",
+            "vendor": "Zomato",
+            "confidence": "high"
+        }
+    },
+    {
+        "id": "test-5",
+        "internalDate": "1701360000000",
+        "snippet": "Your OTP for transaction is 123456. Do not share.",
+        "payload": {
+            "headers": [
+                {
+                    "name": "Subject",
+                    "value": "OTP for verification"
+                },
+                {
+                    "name": "From",
+                    "value": "noreply@bank.com"
+                }
+            ],
+            "body": {
+                "data": "WW91ciBPVFAgZm9yIHRyYW5zYWN0aW9uIGlzIDEyMzQ1Ni4gRG8gbm90IHNoYXJlIHdpdGggYW55b25lLg=="
+            }
+        },
+        "expected": null
+    },
+    {
+        "id": "test-6",
+        "internalDate": "1701360000000",
+        "snippet": "Transaction failed - insufficient balance",
+        "payload": {
+            "headers": [
+                {
+                    "name": "Subject",
+                    "value": "Transaction Failed"
+                },
+                {
+                    "name": "From",
+                    "value": "alerts@bank.com"
+                }
+            ],
+            "body": {
+                "data": "VHJhbnNhY3Rpb24gZmFpbGVkIC0gaW5zdWZmaWNpZW50IGJhbGFuY2UuIEFtb3VudDogUnMuMTAwMC4="
+            }
+        },
+        "expected": null
+    },
+    {
+        "id": "test-7",
+        "internalDate": "1701360000000",
+        "snippet": "₹899.00 paid to NETFLIX via autopay",
+        "payload": {
+            "headers": [
+                {
+                    "name": "Subject",
+                    "value": "Subscription Payment"
+                },
+                {
+                    "name": "From",
+                    "value": "billing@netflix.com"
+                }
+            ],
+            "body": {
+                "data": "SGVsbG8sIFRoYW5rIHlvdSBmb3IgeW91ciBwYXltZW50ISDigb05OTkuMDAgcGFpZCB0byBORVRGTElYIHZpYSBhdXRvcGF5IG9uIDAxLURlYy0yMy4gTmV4dCBiaWxsaW5nIGRhdGU6IDAxLUphbi0yNC4="
+            }
+        },
+        "expected": {
+            "amount": 899.00,
+            "direction": "debit",
+            "vendor": "Netflix",
+            "confidence": "high"
+        }
+    },
+    {
+        "id": "test-8",
+        "internalDate": "1701360000000",
+        "snippet": "Cashback of Rs.25 credited to your Paytm wallet",
+        "payload": {
+            "headers": [
+                {
+                    "name": "Subject",
+                    "value": "Cashback Received"
+                },
+                {
+                    "name": "From",
+                    "value": "alerts@paytm.com"
+                }
+            ],
+            "body": {
+                "data": "SGksIENhc2hiYWNrIG9mIFJzLjI1IGNyZWRpdGVkIHRvIHlvdXIgUGF5dG0gd2FsbGV0IG9uIDAyLURlYy0yMy4gVHJhbnNhY3Rpb24gSUQ6IFBUTTI5ODc2NTQzMjE="
+            }
+        },
+        "expected": {
+            "amount": 25.00,
+            "direction": "credit",
+            "vendor": "Paytm",
+            "confidence": "high"
+        }
+    },
+    {
+        "id": "test-9",
+        "internalDate": "1701360000000",
+        "snippet": "Payment to UBER for ride. Amount: INR 245.50",
+        "payload": {
+            "headers": [
+                {
+                    "name": "Subject",
+                    "value": "Uber Trip Receipt"
+                },
+                {
+                    "name": "From",
+                    "value": "uber.india@uber.com"
+                }
+            ],
+            "body": {
+                "data": "VGhhbmsgeW91IGZvciByaWRpbmcgd2l0aCBVYmVyISBQYXltZW50IHRvIFVCRVIgZm9yIHJpZGUuIEFtb3VudDogSU5SIDI0NS41MC4gVHJpcCBJRDogVFIxMjM0NTY="
+            }
+        },
+        "expected": {
+            "amount": 245.50,
+            "direction": "debit",
+            "vendor": "Uber",
+            "confidence": "high"
+        }
+    },
+    {
+        "id": "test-10",
+        "internalDate": "1701360000000",
+        "snippet": "Rs 1,850.00 spent at FLIPKART via COD",
+        "payload": {
+            "headers": [
+                {
+                    "name": "Subject",
+                    "value": "Order Delivered - Payment Due"
+                },
+                {
+                    "name": "From",
+                    "value": "noreply@flipkart.com"
+                }
+            ],
+            "body": {
+                "data": "WW91ciBvcmRlciBoYXMgYmVlbiBkZWxpdmVyZWQhIFJzIDEsODUwLjAwIHNwZW50IGF0IEZMSVBLQVJUIHZPYSBDT0QuIE9yZGVyIElEOiBGTEs5ODc2NTQzMjE="
+            }
+        },
+        "expected": {
+            "amount": 1850.00,
+            "direction": "debit",
+            "vendor": "Flipkart",
+            "confidence": "high"
+        }
+    },
+    {
+        "id": "test-11",
+        "internalDate": "1701360000000",
+        "snippet": "Amount reversed: ₹500.00 for cancelled transaction",
+        "payload": {
+            "headers": [
+                {
+                    "name": "Subject",
+                    "value": "Refund Processed"
+                },
+                {
+                    "name": "From",
+                    "value": "refunds@razorpay.com"
+                }
+            ],
+            "body": {
+                "data": "SGVsbG8sIEFtb3VudCByZXZlcnNlZDog4oK5NTAwLjAwIGZvciBjYW5jZWxsZWQgdHJhbnNhY3Rpb24uIFJlZnVuZCBJRDogUkZORDk4NzY1NDMyMS4gQWNjb3VudDogKioqKjEyMzQu"
+            }
+        },
+        "expected": {
+            "amount": 500.00,
+            "direction": "credit",
+            "vendor": "Razorpay",
+            "confidence": "medium"
+        }
+    },
+    {
+        "id": "test-12",
+        "internalDate": "1701360000000",
+        "snippet": "UPI payment to phonepe@ybl merchant",
+        "payload": {
+            "headers": [
+                {
+                    "name": "Subject",
+                    "value": "UPI Transaction Success"
+                },
+                {
+                    "name": "From",
+                    "value": "upi@ybl"
+                }
+            ],
+            "body": {
+                "data": "VVBJIHBheW1lbnQgb2YgUnMuMTIwIHRvIHBob25lcGVAeWJsIG1lcmNoYW50IG9uIDAzLURlYy0yMy4gUmVmOiBVUEkxMjM0NTY3ODkwLg=="
+            }
+        },
+        "expected": {
+            "amount": 120.00,
+            "direction": "debit",
+            "vendor": "PhonePe",
+            "confidence": "medium"
+        }
+    }
+]
