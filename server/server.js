@@ -165,20 +165,25 @@ async function startServer() {
       app.use('/api/users', userRoutes);
 
       // Define port
-      const PORT = process.env.PORT || 5001;
+      const PORT = process.env.PORT || 5000;
 
-      // Start server
       app.listen(PORT, '0.0.0.0', () => {
-        console.log('🚀 SERVER STARTED SUCCESSFULLY'.green.bold);
-        console.log(`📡 Port: ${PORT}`.yellow);
-        console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`.cyan);
-        console.log(`🔗 API Base URL: ${process.env.NODE_ENV === 'production' ? 'https://trackify-genz.onrender.com/api' : `http://localhost:${PORT}/api`}`.yellow);
-        console.log(`❤️  Health Check: ${process.env.NODE_ENV === 'production' ? 'https://trackify-genz.onrender.com/api/health' : `http://localhost:${PORT}/api/health`}`.cyan);
-        console.log(`🌍 Server bound to all interfaces (0.0.0.0:${PORT})`.green);
+        console.log(`\n${'='.repeat(60)}`.green.bold);
+        console.log(`🚀 Server listening on port ${PORT}`.green.bold);
+        console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`.blue);
+        console.log(`🔗 Server URL: http://localhost:${PORT}`.cyan);
 
-        if (process.env.NODE_ENV === 'production') {
+        if (process.env.NODE_ENV !== 'production') {
+          console.log(`\n🧪 API Routes:`.yellow);
+          console.log(`   POST   /api/auth/login`.white);
+          console.log(`   GET    /api/health`.white);
+          console.log(`   GET    /api/gmail/status`.white);
+          console.log(`\n💡 Server is ready to accept connections`.green);
+          console.log(`${'='.repeat(60)}\n`.green.bold);
+        } else {
           console.log('🔒 Production mode: Enhanced security enabled'.green);
           console.log(`🎯 CORS allowed origins: ${allowedOrigins.join(', ')}`.blue);
+          console.log(`${'='.repeat(60)}\n`.green.bold);
         }
       });
 
