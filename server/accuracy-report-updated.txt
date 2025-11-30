@@ -1,0 +1,55 @@
+Gmail Transaction Parser - Accuracy Report
+==========================================
+
+Skipping OTP/security email: test-5
+Skipping failed transaction: test-6
+Could not determine direction for email: test-9
+Skipping failed transaction: test-11
+Could not determine direction for email: test-19
+Could not determine direction for email: test-20
+Could not determine direction for email: test-24
+Could not determine direction for email: test-25
+Could not determine direction for email: test-26
+Skipping failed transaction: test-30
+Total Emails: 32
+Valid Transaction Emails: 30
+Parsed Results: 22
+Filtered Out: 10
+
+Accuracy Metrics:
+- Amount Extraction: 40.00% (12/30)
+- Direction Detection: 73.33% (22/30)
+- Vendor Mapping: 40.00% (12/30)
+
+Target Achievement:
+- Amount >= 90%: ❌ FAIL
+- Direction >= 95%: ❌ FAIL
+- Vendor >= 80%: ❌ FAIL
+
+
+--- CSV Report ---
+messageId,expected_amount,parsed_amount,expected_direction,parsed_direction,expected_vendor,parsed_vendor,confidence,pass
+test-1,1250,789,debit,debit,Swiggy,Swiggy,medium,false
+test-2,499,987,credit,credit,Amazon,Your Account Ending,medium,false
+test-3,2500,2500,debit,debit,Paytm,Paytm,medium,true
+test-4,350,789,debit,debit,Zomato,Zomato,medium,false
+test-7,899,999,debit,debit,Netflix,Netflix,medium,false
+test-8,25,765,credit,credit,Paytm,Paytm,medium,false
+test-10,1850,1850,debit,debit,Flipkart,Flipkart,medium,true
+test-12,120,789,debit,debit,PhonePe,PhonePe,medium,false
+test-13,3450,3450,debit,debit,BigBasket,BigBasket,medium,true
+test-14,1250,125,debit,debit,ATM,Atm At Location Abc,medium,false
+test-15,150.5,150.5,debit,debit,Ola,Trip,medium,false
+test-16,75000,23,credit,credit,Salary,Your Account,medium,false
+test-17,2999,2999,debit,debit,Myntra,Order Confirmation,medium,false
+test-18,5000,567,credit,credit,Cash Deposit,Cash Deposit,medium,false
+test-21,4500,4500,debit,debit,IMPS Transfer,Imps To Beneficiary,medium,false
+test-22,133.5,133.5,debit,debit,Amazon,Amazon Prime,medium,false
+test-23,10000,10000,credit,credit,UPI Transfer,Axis Bank,medium,false
+test-27,200,200,debit,debit,PhonePe,PhonePe,medium,true
+test-28,560,560,debit,debit,BookMyShow,Ticket Booking Confirmed,medium,false
+test-29,1299,1299,credit,credit,Flipkart,Refund Initiated,medium,false
+test-31,15000,150,debit,debit,CRED,CRED,medium,false
+test-32,75,75,credit,credit,Google Pay,Google Pay,medium,true
+
+--- End Report ---
