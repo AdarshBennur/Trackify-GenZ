@@ -216,6 +216,7 @@ startServer();
 if (process.env.ENABLE_GMAIL_CRON !== 'false') {
   const gmailFetchJob = require('./jobs/gmailFetchJob');
   gmailFetchJob.start();
+  console.log('✅ GMAIL CRON: started'.green);
 }
 
 // Error handler middleware - keep this after routes
