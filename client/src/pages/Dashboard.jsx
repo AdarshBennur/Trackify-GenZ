@@ -24,6 +24,9 @@ import api from '../utils/apiClient';
 import { formatINR, formatINRCompact } from '../utils/currency';
 import { protectedRequest } from '../utils/requestWithAuth';
 import { hasValidAuth, hasLikelyToken } from '../utils/authGuard';
+import GmailConnectModal from '../components/GmailConnectModal';
+import { FaGoogle } from 'react-icons/fa';
+import { getGmailStatus } from '../services/api/gmail';
 
 // Register ChartJS components
 ChartJS.register(
@@ -131,9 +134,7 @@ const MOCK_INCOMES = [
   }
 ];
 
-import GmailConnectModal from '../components/GmailConnectModal';
-import { FaGoogle } from 'react-icons/fa';
-import { getGmailStatus } from '../services/api/gmail';
+
 
 const Dashboard = () => {
   const [loading, setLoading] = useState(true);
